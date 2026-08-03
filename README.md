@@ -72,5 +72,7 @@ dashboard.belacca.com  A 169.58.97.73
 - Do not delete `pong-api-data`, its PV, or `kube-system/traefik-acme`.
 - Flux ownership and migration rules are documented in
   `belacca-gitops/MIGRATION.md`.
+- The repeatable public-subdomain procedure is documented in
+  `belacca-gitops/SUBDOMAIN-RUNBOOK.md`.
 - Parent updates only pin child commits; deployment happens through each
   project's GitHub Actions workflow and Flux reconciliation.
