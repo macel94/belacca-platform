@@ -1,0 +1,12 @@
+[submodule "cloudnativepong"]
+	path = cloudnativepong
+	url = https://github.com/macel94/cloudnativepong.git
+	branch = main
+[submodule "francesco-belacca-site"]
+	path = francesco-belacca-site
+	url = https://github.com/macel94/francesco-belacca-site.git
+	branch = main
+[submodule "belacca-gitops"]
+	path = belacca-gitops
+	url = https://github.com/macel94/belacca-gitops.git
+	branch = main

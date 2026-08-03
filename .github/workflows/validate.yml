@@ -1,0 +1,35 @@
+name: Validate workspace
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate pinned projects
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: cloudnativepong/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.35.0
+      - name: Validate portfolio
+        run: make site-test
+      - name: Validate Pong
+        run: make pong-test
+      - name: Render manifests
+        run: make manifests
