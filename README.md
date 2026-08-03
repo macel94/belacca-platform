@@ -55,6 +55,7 @@ untouched.
 - `https://francesco.belacca.com/` → Francesco's personal site
 - `https://belacca.com/` → redirect to the personal site
 - `https://www.belacca.com/` → redirect to the personal site
+- `https://dashboard.belacca.com/` → authenticated Headlamp Kubernetes dashboard
 
 DNS records are managed outside GitHub at Cloudflare. Add these A records when
 setting up a new machine or domain:
@@ -62,6 +63,7 @@ setting up a new machine or domain:
 ```text
 pong.belacca.com       A 169.58.97.73
 francesco.belacca.com  A 169.58.97.73
+dashboard.belacca.com  A 169.58.97.73
 ```
 
 ## Safety model
