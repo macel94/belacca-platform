@@ -164,11 +164,12 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - 2026-08-05: Flux ownership migration safety gates passed: the checked-in root render contains every live root-inventory object, application/routing child inventories are disjoint and Ready, public route checks passed, and Pong/analytics/ACME stateful resources are present with prune protection (Pong PV reclaim policy `Retain`). Root `prune: true` is now published in the GitOps tree; it still requires live reconciliation.
 - 2026-08-05: Incident/status batch independently verified: 4 Python evidence tests, 16 site tests, Python/Node/shell syntax checks, safe-failure collection, redaction tests, unknown-by-default status contract, and no-store status packaging pass. External status publication remains intentionally unconfigured.
 - 2026-08-05: Recovery/game-day batch added an opt-in isolated `pong-restore-*` rehearsal, backup/object-storage/encryption contract, and bounded failure drills; backup/rehearsal self-tests and dry-run safety checks pass. Real k3d rehearsal remains runtime/dependency dependent.
+- 2026-08-05: Published the previously local `cloudnativepong` commits through `22929c7` and `francesco-belacca-site` commit `c76fca5`, which fixed GitHub checkout/Dependabot failures for the parent submodule pins. Reruns of parent validation runs `31049129983` and `31049164683` passed; the original Dependabot service runs cannot be rerun by GitHub and remain historical failures.
 
 ## Final coordinator state
 
 - All delegated agents are stopped; no tmux work remains active.
-- Parent and nested repositories contain local commits for the implemented work; the pre-existing empty `cloudnativepong/oom` file remains intentionally untracked and uncommitted.
+- Parent and nested repositories contain published commits for the implemented work; the pre-existing empty `cloudnativepong/oom` file remains intentionally untracked and uncommitted.
 - Local implementation is complete for Pong hardening/telemetry, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
 - The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and its existing `prune: false` ownership decision.
 - The public site status page is intentionally unknown/not configured until an external publisher supplies reviewed, timestamped, sanitized data.
@@ -178,7 +179,7 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 
 These require operator-owned infrastructure or secrets and must not be faked in Git:
 
-- publish/review child repository changes and update the parent submodule pointers;
+- the child repository commits and parent submodule pointers are now published; future child changes still require the same publish-before-pin order;
 - external synthetic monitor account/status publisher and repository variables;
 - notification destination tokens and the `platform-notification-webhook` Secret;
 - object-storage credentials, bucket policy, retention/WORM, and encryption/KMS keys;
