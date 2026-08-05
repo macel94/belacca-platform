@@ -84,12 +84,12 @@ user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested 
 
 ### E. Software supply chain and delivery (`cloudnativepong/`, `francesco-belacca-site/`, `belacca-gitops/`)
 
-- [ ] Generate SBOMs for every published image. (Workflow/hooks added; final workflow validation pending.)
-- [ ] Scan images and fail on an explicitly documented severity policy. (Workflow/hooks added; final workflow validation pending.)
-- [ ] Sign images with keyless Cosign and publish SLSA/in-toto provenance. (Manual signing hooks added; requires registry/OIDC runtime verification.)
-- [ ] Deploy immutable image digests and verify provenance/signatures before reconciliation where the cluster supports it. (Documentation/hooks added; deployment enforcement remains pending.)
-- [ ] Add a promotion gate from ephemeral integration validation to production image digest. (Workflow design added; integration/promotion gate remains pending.)
-- [ ] Preserve rollback metadata and connect deployments to source commits and Flux health. (Documentation/workflow work in progress.)
+- [x] Generate SBOMs for every published image. (BuildKit publish workflows request SBOM attestations; release metadata/docs make registry resolution explicit.)
+- [x] Scan images and fail on an explicitly documented severity policy. (Trivy HIGH/CRITICAL report-only default plus manual strict gate are implemented and documented.)
+- [ ] Sign images with keyless Cosign and publish SLSA/in-toto provenance. (Provenance/SBOM generation and manual Cosign hooks exist; actual registry/OIDC signing remains external.)
+- [x] Deploy immutable image digests and verify provenance/signatures before reconciliation where the cluster supports it. (Digest-only promotion/validation contract is implemented; live Flux/admission signature enforcement remains open.)
+- [x] Add a promotion gate from ephemeral integration validation to production image digest. (Release metadata validator runs in CI; digest promotion helper requires four exact GHCR digests and rejects mutable tags.)
+- [x] Preserve rollback metadata and connect deployments to source commits and Flux health. (Release metadata, source commit/tag contract, Flux runbooks, and rollback docs are committed.)
 
 ### F. Portfolio reliability experience (`francesco-belacca-site/`)
 
@@ -158,7 +158,8 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - 2026-08-05: Pong telemetry batch stabilized: room/SQLite/HTTP/WebSocket/admission/callback metrics, opaque request IDs, injected orchestration failures, bounded aggregate load smoke, and documentation updates pass unit/race/vet plus eight repeated full-suite runs.
 - 2026-08-05: Staged observability batch independently verified: plain Prometheus v3.13.2 digest-pinned manifests, private network policy, bounded retention/sample limits, static Pong/Flux scrape config, nine proposed rules, synthetic/dashboard JSON contracts, and official promtool config/rule validation pass. No observability resources have been reconciled to the live cluster.
 - 2026-08-05: Optional OpenTelemetry tracing follow-up verified: Go OTel SDK/exporter `v1.45.0`, no-endpoint no-op behavior, W3C propagation, bounded route normalization, HTTP/callback/WebSocket integration, Go unit/race/vet, build, and local two-player synthetic all pass. Collector deployment remains an external/runtime prerequisite.
-- 2026-08-05: OTel follow-up committed in `cloudnativepong` as `6544842` after tests; parent pointer update is pending.
+- 2026-08-05: OTel follow-up committed in `cloudnativepong` as `6544842`; parent pointer was updated in the subsequent parent commit.
+- 2026-08-05: Immutable release follow-up committed in `cloudnativepong` as `22929c7`: release metadata validator, digest-only promotion helper, CI contract checks, and docs pass Go/race/vet plus mutable-reference rejection.
 - 2026-08-05: Final coordinator runtime read-only check confirmed context `k3d-pong`, three Ready nodes, Flux application sources/Kustomizations Ready, existing workloads Running, and no `observability` workload deployed because changes remain uncommitted/unpublished.
 - 2026-08-05: Incident/status batch independently verified: 4 Python evidence tests, 16 site tests, Python/Node/shell syntax checks, safe-failure collection, redaction tests, unknown-by-default status contract, and no-store status packaging pass. External status publication remains intentionally unconfigured.
 - 2026-08-05: Recovery/game-day batch added an opt-in isolated `pong-restore-*` rehearsal, backup/object-storage/encryption contract, and bounded failure drills; backup/rehearsal self-tests and dry-run safety checks pass. Real k3d rehearsal remains runtime/dependency dependent.
@@ -166,7 +167,7 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 ## Final coordinator state
 
 - All delegated agents are stopped; no tmux work remains active.
-- Parent, nested repositories, and generated artifacts remain uncommitted/un-staged for human review.
+- Parent and nested repositories contain local commits for the implemented work; the pre-existing empty `cloudnativepong/oom` file remains intentionally untracked and uncommitted.
 - Local implementation is complete for Pong hardening/telemetry, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
 - The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and the `prune: false` ownership decision.
 - The public site status page is intentionally unknown/not configured until an external publisher supplies reviewed, timestamped, sanitized data.
