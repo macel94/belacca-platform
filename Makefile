@@ -1,4 +1,4 @@
-.PHONY: init status update site-test pong-test manifests validate
+.PHONY: init status evidence-test site-test pong-test manifests validate evidence-bundle
 
 SHELL := /usr/bin/env bash
 
@@ -7,6 +7,12 @@ init:
 
 status:
 	./scripts/status.sh
+
+evidence-test:
+	python3 -m unittest discover -s tests -v
+
+evidence-bundle:
+	./scripts/incident-evidence.sh collect --format both
 
 update:
 	git submodule update --remote --merge
@@ -22,6 +28,10 @@ pong-test:
 	cd cloudnativepong && go vet ./...
 
 manifests:
+	python3 belacca-gitops/scripts/validate-catalog.py
+	python3 belacca-gitops/scripts/validate-recovery-contract.py
+	python3 belacca-gitops/scripts/validate-observability.py
+	python3 belacca-gitops/scripts/extract-prometheus-config.py
 	kubectl kustomize cloudnativepong/k8s/overlays/server >/tmp/belacca-platform-pong.yaml
 	kubectl kustomize francesco-belacca-site/deploy >/tmp/belacca-platform-site.yaml
 	kubectl kustomize belacca-gitops/clusters/vmi3474918 >/tmp/belacca-platform-gitops.yaml

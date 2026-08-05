@@ -34,6 +34,8 @@ make init
 
 ```bash
 make status       # show parent and submodule branches/commits
+make evidence-test # run bounded evidence-tool tests
+make evidence-bundle # explicitly collect local evidence (read-only)
 make update       # fetch and fast-forward submodules to their configured main branches
 make validate     # run application tests and render Kubernetes manifests
 make site-test    # portfolio tests
@@ -48,6 +50,23 @@ publishing a new workspace pin.
 The helper scripts never stage or commit files inside a child repository. A
 working tree such as `cloudnativepong/ops/` is intentionally reported but left
 untouched.
+
+## Incident evidence and public status
+
+[`scripts/incident-evidence.sh`](scripts/incident-evidence.sh) is an explicitly
+invoked, bounded, read-only collector for selected kubectl/Flux/workspace status
+inputs. It emits local JSON/Markdown with timestamps, source references,
+redactions, hypotheses, confidence, and pending human-approval placeholders.
+It never queries Secret contents, mutates the cluster, or approves an action.
+See [`docs/incident-evidence.md`](docs/incident-evidence.md) for the AI boundary:
+read-only, evidence-linked, human approval, and GitOps-only production changes.
+
+The site's [`status.html`](francesco-belacca-site/status.html) and
+[`status.json`](francesco-belacca-site/status.json) are a separate sanitized
+public contract. The checked-in status is deliberately `unknown` /
+`not_configured`; an external publisher must provide reviewed evidence before
+any status or uptime value is shown. No page response, build identifier, or
+empty incident list is treated as uptime evidence.
 
 ## Hosting map
 

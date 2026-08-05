@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Git submodule pointers that pin the child repositories.
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      git-submodules:
+        patterns:
+          - "*"
+
+  # GitHub Actions used by the workspace validation workflow.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
