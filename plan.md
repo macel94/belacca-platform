@@ -79,7 +79,7 @@ user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested 
 - [ ] Add encrypted off-cluster backups for Pong and GoatCounter with retention and explicit RPO/RTO. (External storage/key prerequisites remain unresolved.)
 - [x] Add a restore verification job/process in an ephemeral k3d environment; prove application startup and synthetic workflows after restore. (SQLite online-backup/restore self-test and fail-closed isolated runner/dry-run are validated; real disposable-cluster run remains prerequisite dependent.)
 - [x] Add controlled game-day/failure tests to CI or a documented operator workflow. (Bounded gateway/static/API/room/Flux/NetworkPolicy drills documented and recovery contract validated.)
-- [x] Finish the Flux ownership migration safely and enable root pruning only after inventory and protected-state verification. (Root `prune: true` is prepared in the GitOps tree after live root-inventory coverage, disjoint child inventories, Ready children, public route checks, and protected state verification; the staged observability child remains `prune: false`.)
+- [x] Finish the Flux ownership migration safely and enable root pruning only after inventory and protected-state verification. (Root `prune: true` is published in the GitOps tree after live root-inventory coverage, disjoint child inventories, Ready children, public route checks, and protected state verification; the staged observability child remains `prune: false`.)
 - [x] Reconcile DNS/ACME documentation with the actual committed DNS-01 Traefik configuration. (GitOps docs now describe Cloudflare DNS-01 and the real Secret key contract.)
 
 ### E. Software supply chain and delivery (`cloudnativepong/`, `francesco-belacca-site/`, `belacca-gitops/`)
@@ -161,7 +161,7 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - 2026-08-05: OTel follow-up committed in `cloudnativepong` as `6544842`; parent pointer was updated in the subsequent parent commit.
 - 2026-08-05: Immutable release follow-up committed in `cloudnativepong` as `22929c7`: release metadata validator, digest-only promotion helper, CI contract checks, and docs pass Go/race/vet plus mutable-reference rejection.
 - 2026-08-05: Final coordinator runtime read-only check confirmed context `k3d-pong`, three Ready nodes, Flux application sources/Kustomizations Ready, existing workloads Running, and no `observability` workload deployed because changes remain uncommitted/unpublished.
-- 2026-08-05: Flux ownership migration safety gates passed: the checked-in root render contains every live root-inventory object, application/routing child inventories are disjoint and Ready, public route checks passed, and Pong/analytics/ACME stateful resources are present with prune protection (Pong PV reclaim policy `Retain`). Root `prune: true` is now prepared in the GitOps tree; it still requires publication and live reconciliation.
+- 2026-08-05: Flux ownership migration safety gates passed: the checked-in root render contains every live root-inventory object, application/routing child inventories are disjoint and Ready, public route checks passed, and Pong/analytics/ACME stateful resources are present with prune protection (Pong PV reclaim policy `Retain`). Root `prune: true` is now published in the GitOps tree; it still requires live reconciliation.
 - 2026-08-05: Incident/status batch independently verified: 4 Python evidence tests, 16 site tests, Python/Node/shell syntax checks, safe-failure collection, redaction tests, unknown-by-default status contract, and no-store status packaging pass. External status publication remains intentionally unconfigured.
 - 2026-08-05: Recovery/game-day batch added an opt-in isolated `pong-restore-*` rehearsal, backup/object-storage/encryption contract, and bounded failure drills; backup/rehearsal self-tests and dry-run safety checks pass. Real k3d rehearsal remains runtime/dependency dependent.
 
@@ -172,7 +172,7 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - Local implementation is complete for Pong hardening/telemetry, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
 - The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and its existing `prune: false` ownership decision.
 - The public site status page is intentionally unknown/not configured until an external publisher supplies reviewed, timestamped, sanitized data.
-- Runtime gates remain open for external notification credentials, off-cluster backup storage/KMS, real isolated restore, public synthetic scheduling variables, image signing/digest enforcement, measured SLOs/burn-rate paging, and publication/reconciliation of the newly enabled root pruning.
+- Runtime gates remain open for external notification credentials, off-cluster backup storage/KMS, real isolated restore, public synthetic scheduling variables, image signing/digest enforcement, measured SLOs/burn-rate paging, and live reconciliation of the newly enabled root pruning.
 
 ## Deferred/external prerequisites
 
@@ -186,4 +186,4 @@ These require operator-owned infrastructure or secrets and must not be faked in 
 - registry/OIDC execution for Cosign signing and policy enforcement by digest;
 - real disposable-k3d restore rehearsal prerequisites (Docker/k3d, local images, copied SQLite artifact);
 - measured SLO data, alert destination, incident paging policy, and public status publication;
-- publication/reconciliation of the root-pruning change and any irreversible pruning or stateful-resource deletion.
+- live reconciliation of the root-pruning change and any irreversible pruning or stateful-resource deletion.
