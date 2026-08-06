@@ -23,7 +23,8 @@ site-test:
 	cd francesco-belacca-site && npm test
 
 status-test:
-	if [ -d belacca-status/.git ]; then cd belacca-status && npm test && npm run check; else echo 'status repository not initialized; skipping status tests.'; fi
+	# A checked-in observation may age between hourly publications; the publish workflow validates freshness after generating a new artifact.
+	if [ -d belacca-status/.git ]; then cd belacca-status && npm test && npm run check -- --allow-expired; else echo 'status repository not initialized; skipping status tests.'; fi
 
 pong-test:
 	cd cloudnativepong && go test ./...
