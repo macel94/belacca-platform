@@ -70,28 +70,22 @@ It never queries Secret contents, mutates the cluster, or approves an action.
 See [`docs/incident-evidence.md`](docs/incident-evidence.md) for the AI boundary:
 read-only, evidence-linked, human approval, and GitOps-only production changes.
 
-The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the single VM. The checked-in site artifact remains deliberately `unknown` / `not_configured` until the first fresh observation is published. Stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
+The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the single VM. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
-## Hosting map
+## Supported platform sites
 
-- `https://pong.belacca.com/` → Cloud Native Pong
-- `https://francesco.belacca.com/` → Francesco's personal site
-- `https://belacca.com/` → redirect to the personal site
-- `https://www.belacca.com/` → redirect to the personal site
-- `https://dashboard.belacca.com/` → Dex/Google-authenticated Headlamp Kubernetes dashboard
-- `https://flux.belacca.com/` → Dex/Google-authenticated Flux Operator dashboard
-- `https://stats.belacca.com/` → Dex-gated GoatCounter dashboard with public collector paths
+The canonical inventory of public applications, redirect aliases, operator
+surfaces, DNS records, canonicalization rules, and monitoring coverage is
+[`belacca-gitops/docs/SITES.md`](belacca-gitops/docs/SITES.md). Do not maintain
+another host inventory in this workspace; update that document and the GitOps
+routing/catalog together when a supported site changes.
 
-DNS records are managed outside GitHub at Cloudflare. Add these A records when
-setting up a new machine or domain:
-
-```text
-pong.belacca.com       A 169.58.97.73
-francesco.belacca.com  A 169.58.97.73
-dashboard.belacca.com  A 169.58.97.73
-flux.belacca.com       A 169.58.97.73
-dex.belacca.com        A 169.58.97.73
-```
+In brief, `francesco.belacca.com` is the canonical personal site,
+`pong.belacca.com` is Cloud Native Pong, and `stats.belacca.com` is the
+analytics collector/dashboard. `belacca.com`, `www.belacca.com`, and
+`www.francesco.belacca.com` permanently redirect to the canonical personal
+site. `dashboard.belacca.com`, `flux.belacca.com`, and `dex.belacca.com` are
+protected operator surfaces or aliases, not public applications.
 
 ## Safety model
 
