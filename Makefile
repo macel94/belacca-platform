@@ -1,4 +1,4 @@
-.PHONY: init status evidence-test site-test pong-test manifests validate evidence-bundle
+.PHONY: init status evidence-test site-test status-test pong-test manifests validate evidence-bundle
 
 SHELL := /usr/bin/env bash
 
@@ -16,11 +16,14 @@ evidence-bundle:
 
 update:
 	git submodule update --remote --merge
-	git add .gitmodules cloudnativepong francesco-belacca-site belacca-gitops
+	git add .gitmodules cloudnativepong francesco-belacca-site belacca-status belacca-gitops
 	@echo 'Submodules updated and parent Gitlinks staged; review before committing.'
 
 site-test:
 	cd francesco-belacca-site && npm test
+
+status-test:
+	if [ -d belacca-status/.git ]; then cd belacca-status && npm test && npm run check; else echo 'status repository not initialized; skipping status tests.'; fi
 
 pong-test:
 	cd cloudnativepong && go test ./...
@@ -39,6 +42,6 @@ manifests:
 	@echo 'Rendered manifests:'
 	@wc -l /tmp/belacca-platform-{pong,site,gitops,routing}.yaml
 
-validate: site-test pong-test manifests
+validate: site-test status-test pong-test manifests
 	git diff --check
 	@echo 'Workspace validation passed.'

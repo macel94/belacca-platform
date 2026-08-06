@@ -10,3 +10,6 @@
 	path = belacca-gitops
 	url = https://github.com/macel94/belacca-gitops.git
 	branch = main
+[submodule "belacca-status"]
+	path = belacca-status
+	url = https://github.com/macel94/belacca-status.git
