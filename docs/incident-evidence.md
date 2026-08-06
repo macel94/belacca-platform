@@ -59,7 +59,10 @@ within these boundaries:
    The evidence collector must never apply a change directly to the cluster.
 
 The public [`francesco.belacca.com/status.html`](https://francesco.belacca.com/status.html)
-page consumes only the sanitized `francesco-belacca-site/status.json` contract.
-Its checked-in default is `unknown` with uptime `not_configured`. An external,
-human-reviewed publisher may replace that static data through the normal
-reviewed/GitOps delivery path; there is no cluster-to-browser status API.
+page consumes the sanitized v2 artifact from the separate
+[`macel94/belacca-status`](https://github.com/macel94/belacca-status) repository.
+A GitHub-hosted runner outside the single VM performs hourly public checks and
+commits bounded evidence history. The site keeps an `unknown` fallback and
+rejects malformed or expired data. The runner can record an outage while the
+cluster is down, but the page itself cannot be served until the single VM
+recovers; this is not multi-region monitoring.

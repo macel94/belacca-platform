@@ -10,11 +10,15 @@ remain in their own repositories:
 |---|---|---|
 | `cloudnativepong/` | [`macel94/cloudnativepong`](https://github.com/macel94/cloudnativepong) | Pong application, images, app manifests |
 | `francesco-belacca-site/` | [`macel94/francesco-belacca-site`](https://github.com/macel94/francesco-belacca-site) | Personal site, image, site manifests |
+| `belacca-status/` | [`macel94/belacca-status`](https://github.com/macel94/belacca-status) | Hourly external observations and sanitized status history |
 | `belacca-gitops/` | [`macel94/belacca-gitops`](https://github.com/macel94/belacca-gitops) | Flux root, cluster infrastructure, host routing |
 
-The submodules are pinned to known commits. The parent repository does not
-flatten or duplicate their files, so each project can still be reviewed, built,
-and deployed independently.
+The application and deployment repositories are normally pinned to known
+commits as submodules. The status repository is maintained separately and is
+also checked out here for local review; its first published commit must exist
+before the parent can record a valid submodule pointer. The parent repository
+does not flatten or duplicate child history, so each project can still be
+reviewed, built, and deployed independently.
 
 ## Clone everything
 
@@ -66,12 +70,7 @@ It never queries Secret contents, mutates the cluster, or approves an action.
 See [`docs/incident-evidence.md`](docs/incident-evidence.md) for the AI boundary:
 read-only, evidence-linked, human approval, and GitOps-only production changes.
 
-The site's [`status.html`](francesco-belacca-site/status.html) and
-[`status.json`](francesco-belacca-site/status.json) are a separate sanitized
-public contract. The checked-in status is deliberately `unknown` /
-`not_configured`; an external publisher must provide reviewed evidence before
-any status or uptime value is shown. No page response, build identifier, or
-empty incident list is treated as uptime evidence.
+The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the single VM. The checked-in site artifact remains deliberately `unknown` / `not_configured` until the first fresh observation is published. Stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
 ## Hosting map
 
