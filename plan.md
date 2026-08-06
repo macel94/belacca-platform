@@ -193,7 +193,7 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 ## Final coordinator state
 
 - All delegated agents are stopped; no tmux work remains active.
-- Parent and nested repositories contain published commits for the implemented work; the pre-existing empty `cloudnativepong/oom` file remains intentionally untracked and uncommitted.
+- Parent and nested repositories contain published commits for this rollout and the earlier implementation work. Pre-existing unrelated changes remain intentionally unstaged in `belacca-gitops` (Pong catalog measurement, observability synthetic/docs) and `cloudnativepong` (child worktree changes and the empty `oom` file); they were not included in this rollout.
 - Local implementation is complete for Pong hardening/telemetry, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
 - The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and its existing `prune: false` ownership decision.
 - The public site status page is intentionally unknown/not configured until an external publisher supplies reviewed, timestamped, sanitized data.
@@ -207,8 +207,8 @@ These require operator-owned infrastructure or secrets and must not be faked in 
 - external synthetic runners for portfolio/analytics/dashboard, the status publisher, and any alternate-target repository variables;
 - notification destination tokens and the `platform-notification-webhook` Secret;
 - object-storage credentials, bucket policy, retention/WORM, and encryption/KMS keys;
-- Google OAuth, GoatCounter admin, and Cloudflare DNS-01 Secrets;
+- rotation and operator-managed backup of the provisioned Google/Dex/OAuth2 Proxy, GoatCounter admin, and Cloudflare DNS-01 Secrets; their values remain out of band;
 - GitHub registry attestation publication and policy enforcement by digest;
 - real disposable-k3d restore rehearsal prerequisites (Docker/k3d, local images, copied SQLite artifact);
-- measured SLO data, alert destination, incident paging policy, and public status publication;
+- interactive Google browser sign-in/Google Cloud callback confirmation, GoatCounter's application-session login after the Dex edge gate, measured SLO data, alert destination, incident paging policy, and public status publication;
 - live reconciliation of the root-pruning change and any irreversible pruning or stateful-resource deletion.
