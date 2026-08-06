@@ -64,7 +64,8 @@ user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested 
 - [x] Choose a deliberately small observability stack appropriate for one k3d host. (Staged plain Prometheus v3.13.2, one replica, private ClusterIP, 7-day/2 GB ephemeral retention; no heavyweight Operator/CRD dependency.)
 - [x] Add Prometheus-compatible collection for application metrics and Kubernetes/Flux state. (Pinned Prometheus manifest, static Pong/Flux scrape config, bounded sample limits, and private network policy render; collector is staged but not yet reconciled.)
 - [x] Add OpenTelemetry Collector and at least one end-to-end Pong trace path, or document a tested staged implementation if cluster constraints prevent rollout. (Pong now emits opt-in OTLP/HTTP spans with W3C propagation through HTTP, room callbacks, and proxy WebSockets; no collector is claimed deployed.)
-- [x] Add blackbox/external synthetic checks for all public services and the Pong create/join/WebSocket workflow. (Out-of-band Pong workflow plus machine-readable portfolio/Pong/analytics/dashboard contracts and unknown-by-default public status are implemented.)
+- [x] Add the Pong blackbox/external synthetic check for the create/join/WebSocket workflow. (The scheduled Pong GitHub Actions runner executes the canonical homepage/health/create/join/two-player WebSocket/cleanup journey.)
+- [ ] Add active blackbox runners for the portfolio, analytics, and authenticated dashboard contracts. (Machine-readable contracts exist; their external runners remain operator-owned prerequisites.)
 - [x] Add SLO recording/alert rules and multi-window burn-rate alerts; avoid paging on symptoms that do not consume meaningful budget. (Nine proposed recording/alert rules validate with official promtool; runtime measurement/destination remains open.)
 - [x] Add dashboards for user journeys, deployment health, room lifecycle, node capacity, storage, certificates, and Flux reconciliation. (Private staged dashboard JSON/query source is validated; Grafana installation and live panels remain open.)
 - [x] Add Flux notifications for source/Kustomization/Helm failures and successful deployment status. (Provider/Alert resources render and server-side dry-run; destination Secret remains intentionally out of band.)
@@ -161,6 +162,8 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - 2026-08-05: OTel follow-up committed in `cloudnativepong` as `6544842`; parent pointer was updated in the subsequent parent commit.
 - 2026-08-05: Immutable release follow-up committed in `cloudnativepong` as `22929c7`: release metadata validator, digest-only promotion helper, CI contract checks, and docs pass Go/race/vet plus mutable-reference rejection.
 - 2026-08-06: Replaced legacy image-signing hooks with GitHub Artifact Attestations: both image publishers use `actions/attest@v4` with registry-pushed SLSA provenance, repository-scoped `gh attestation verify` helpers are present, and Pong digest promotion has an explicit `--verify-attestations` gate. Live registry attestation execution remains a publish-time gate.
+- 2026-08-06: Published Pong child commits through generated deployment commit `009d134` and site child commits through generated deployment commit `aa3f8a8`; native attestation, supply-chain, child test/build, and parent validation workflows passed. The final Pong K8s E2E passed after propagating the local origin policy into dynamically generated room Pods.
+- 2026-08-06: Reworked the Pong synthetic check so the scheduled workflow defaults to `https://pong.belacca.com`, fails closed instead of green-skipping an unset target, validates homepage/health/room contract/two-player playing state, and verifies room cleanup. Fixture tests, the full child suite, and one live public journey passed; other service probes remain external prerequisites.
 - 2026-08-05: Final coordinator runtime read-only check confirmed context `k3d-pong`, three Ready nodes, Flux application sources/Kustomizations Ready, existing workloads Running, and no `observability` workload deployed because changes remain uncommitted/unpublished.
 - 2026-08-05: Flux ownership migration safety gates passed: the checked-in root render contains every live root-inventory object, application/routing child inventories are disjoint and Ready, public route checks passed, and Pong/analytics/ACME stateful resources are present with prune protection (Pong PV reclaim policy `Retain`). Root `prune: true` is now published in the GitOps tree; it still requires live reconciliation.
 - 2026-08-05: Incident/status batch independently verified: 4 Python evidence tests, 16 site tests, Python/Node/shell syntax checks, safe-failure collection, redaction tests, unknown-by-default status contract, and no-store status packaging pass. External status publication remains intentionally unconfigured.
@@ -174,14 +177,14 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - Local implementation is complete for Pong hardening/telemetry, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
 - The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and its existing `prune: false` ownership decision.
 - The public site status page is intentionally unknown/not configured until an external publisher supplies reviewed, timestamped, sanitized data.
-- Runtime gates remain open for external notification credentials, off-cluster backup storage/KMS, real isolated restore, public synthetic scheduling variables, GitHub registry attestation enforcement by digest, measured SLOs/burn-rate paging, and live reconciliation of the newly enabled root pruning.
+- Runtime gates remain open for external notification credentials, off-cluster backup storage/KMS, real isolated restore, portfolio/analytics/dashboard synthetic runners, GitHub registry attestation enforcement by digest, measured SLOs/burn-rate paging, and live reconciliation of the newly enabled root pruning.
 
 ## Deferred/external prerequisites
 
 These require operator-owned infrastructure or secrets and must not be faked in Git:
 
 - the child repository commits and parent submodule pointers are now published; future child changes still require the same publish-before-pin order;
-- external synthetic monitor account/status publisher and repository variables;
+- external synthetic runners for portfolio/analytics/dashboard, the status publisher, and any alternate-target repository variables;
 - notification destination tokens and the `platform-notification-webhook` Secret;
 - object-storage credentials, bucket policy, retention/WORM, and encryption/KMS keys;
 - Google OAuth, GoatCounter admin, and Cloudflare DNS-01 Secrets;
