@@ -43,6 +43,11 @@ make pong-test    # Go tests, race tests, and vet
 make manifests    # render Pong, site, and platform Kustomizations
 ```
 
+For the fast development model, read
+[`docs/development-loop.md`](docs/development-loop.md). Local process mode is
+the default inner loop; the public `k3d-pong` cluster is not a development
+sandbox, and GitOps is reserved for reviewed production promotion.
+
 `make update` changes the checked-out submodule commits and stages the parent
 Gitlinks, but does not commit or push. Review the resulting parent diff before
 publishing a new workspace pin.
