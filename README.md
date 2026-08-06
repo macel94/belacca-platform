@@ -79,7 +79,9 @@ empty incident list is treated as uptime evidence.
 - `https://francesco.belacca.com/` → Francesco's personal site
 - `https://belacca.com/` → redirect to the personal site
 - `https://www.belacca.com/` → redirect to the personal site
-- `https://dashboard.belacca.com/` → authenticated Headlamp Kubernetes dashboard
+- `https://dashboard.belacca.com/` → Dex/Google-authenticated Headlamp Kubernetes dashboard
+- `https://flux.belacca.com/` → Dex/Google-authenticated Flux Operator dashboard
+- `https://stats.belacca.com/` → Dex-gated GoatCounter dashboard with public collector paths
 
 DNS records are managed outside GitHub at Cloudflare. Add these A records when
 setting up a new machine or domain:
@@ -88,6 +90,8 @@ setting up a new machine or domain:
 pong.belacca.com       A 169.58.97.73
 francesco.belacca.com  A 169.58.97.73
 dashboard.belacca.com  A 169.58.97.73
+flux.belacca.com       A 169.58.97.73
+dex.belacca.com        A 169.58.97.73
 ```
 
 ## Safety model
