@@ -2,7 +2,7 @@
 
 > Resumable execution plan for `belacca-platform`.
 >
-> Last updated: 2026-08-05
+> Last updated: 2026-08-06
 > Coordinator: primary pi session
 > Agent model policy: all delegated agents must use `openai/gpt-5.6-luna`.
 > Git policy: do not stage or commit automatically; review nested repositories and parent gitlinks separately.
@@ -107,6 +107,16 @@ user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested 
 - [x] Never allow the assistant to mutate the cluster directly; changes must be reviewed GitOps commits/PRs. (Collector has read-only command allowlists and the contract requires GitOps-only changes.)
 - [x] Document data minimization and secret redaction. (Secret/token/password/JWT/private-key/IP-like redaction is tested.)
 
+### H. Shared Google SSO and Flux Web UI (`belacca-gitops/`)
+
+- [x] Interpret the requested “DAX” setup as the supplied guide's Dex-based Flux Web UI SSO and verify the current Flux Operator, Dex, Headlamp, OAuth2 Proxy, GoatCounter, and Cloudflare contracts against upstream documentation.
+- [x] Install the standalone Flux Operator Web UI chart (`0.57.0`) with Flux Operator CRDs and `serverOnly: true`, preserving the existing CLI-managed Flux controllers.
+- [x] Install Dex (`0.24.1` / Dex `2.44.0`) with persistent SQLite state, Google connector, separate Flux/Headlamp/stats clients, secure out-of-band Secrets, and a restricted identity namespace/network boundary.
+- [x] Expose `flux.belacca.com` and `dex.belacca.com` through Traefik with Cloudflare DNS-01 ACME, add DNS-only Cloudflare A records, and verify Let's Encrypt SANs.
+- [x] Move Headlamp and the analytics dashboard edge authentication from direct Google OAuth to Dex/Google OIDC; keep the Headlamp BasicAuth route only as rollback and preserve public GoatCounter `/count`, `/count.js`, and `/status` paths.
+- [x] Bind `belakkuz@gmail.com` to the Flux Web UI admin role, restrict both OAuth2 Proxy allowlists to that email, align the existing GoatCounter superuser email without changing its password, and document the Headlamp fixed-ServiceAccount admin boundary.
+- [x] Verify GitOps publication, DNS, Secrets, Kustomizations, HelmReleases, workloads, TLS, OIDC discovery, OAuth redirect targets, RBAC, public analytics paths, and existing portfolio/Pong health. (Interactive browser completion of Google sign-in remains a manual operator check.)
+
 ## Delegation plan
 
 Delegated work must be isolated by repository/files and launched in tmux with:
@@ -141,9 +151,9 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 ### Runtime gates (only when cluster access is safe and available)
 
 - [x] `kubectl config current-context` is `k3d-pong` before diagnostics. (Final read-only check confirmed it.)
-- [x] no destructive cluster/PVC operation. (No cluster/PVC mutation, deletion, staging, or commit was performed.)
-- [x] Flux sources/Kustomizations/HelmReleases are Ready. (Final read-only check confirmed existing application sources/Kustomizations and workloads; staged observability was not reconciled.)
-- [x] public health, redirect, certificate, and synthetic user journeys pass. (Public health/homepage/Pong/analytics checks and redirect passed; local two-player synthetic passed. Public status artifact remains old until publication.)
+- [x] no destructive cluster/PVC operation. (No cluster deletion/recreation or protected PVC deletion/mutation was performed; only the reviewed SSO resources, DNS records, out-of-band Secrets, and GoatCounter admin identity were changed.)
+- [x] Flux sources/Kustomizations/HelmReleases are Ready. (Final read-only check confirmed `dex`, `flux-web`, `analytics`, `belacca-routing`, existing application Kustomizations, and all relevant HelmReleases/workloads Ready.)
+- [x] public health, redirect, certificate, and synthetic user journeys pass. (Portfolio/Pong health, Dex discovery, Flux Web UI, dashboard Dex redirect, stats dashboard Dex redirect, public `/status`, public `/count.js`, valid TLS SANs, DNS propagation, and existing service checks passed; the local two-player synthetic also passed. Interactive Google sign-in remains manual.)
 - [ ] backup restore passes in an isolated environment. (Self-test and dry-run pass; real disposable k3d rehearsal requires Docker/k3d/images and an operator-approved copied database.)
 - [x] no credentials or private data appear in logs, artifacts, metrics, or Git. (Safety scans passed after removing generated caches; only intentional `${{ secrets.GITHUB_TOKEN }}` references and interactive prompt documentation remain.)
 
@@ -169,6 +179,16 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 - 2026-08-05: Incident/status batch independently verified: 4 Python evidence tests, 16 site tests, Python/Node/shell syntax checks, safe-failure collection, redaction tests, unknown-by-default status contract, and no-store status packaging pass. External status publication remains intentionally unconfigured.
 - 2026-08-05: Recovery/game-day batch added an opt-in isolated `pong-restore-*` rehearsal, backup/object-storage/encryption contract, and bounded failure drills; backup/rehearsal self-tests and dry-run safety checks pass. Real k3d rehearsal remains runtime/dependency dependent.
 - 2026-08-05: Published the previously local `cloudnativepong` commits through `22929c7` and `francesco-belacca-site` commit `c76fca5`, which fixed GitHub checkout/Dependabot failures for the parent submodule pins. Reruns of parent validation runs `31049129983` and `31049164683` passed; the original Dependabot service runs cannot be rerun by GitHub and remain historical failures.
+
+## Verification log (2026-08-06 SSO/Flux dashboard rollout)
+
+- Added and published the shared Dex/Google SSO and Flux Web UI implementation in child GitOps commit `1b83ead`, with subsequent published runtime fixes `442843a` (Dex `/tmp` emptyDir), `b35d21e` (allow identity routes before analytics readiness), and `3df55bb` (public analytics route precedence). The parent published the final child pointer in `d77987d`; all remote refs were verified.
+- Provisioned only out-of-band Secret data: `dex-google-oauth`, `dex-client-secrets`, `flux-web-client`, `headlamp-dex-oauth`, and `analytics-dex-oauth`; values were never written to Git or printed. The existing GoatCounter admin email was changed in place to `belakkuz@gmail.com` while its password was preserved.
+- Added Cloudflare DNS-only A records for `flux.belacca.com` and `dex.belacca.com` pointing to `169.58.97.73`; Cloudflare zone/DNS API operations and Google/Cloudflare public DNS resolution passed.
+- Reconciled the live `k3d-pong` cluster without deleting/recreating the cluster or protected PVCs. Final Flux Kustomizations (`analytics`, `belacca-routing`, `dex`, `flux-system`, `flux-web`, `observability`, `pong`, and `portfolio`) reported `Ready=True`; Dex, Flux Web UI, Headlamp OAuth2 Proxy, analytics OAuth2 Proxy, GoatCounter, and existing workloads were Ready.
+- Final endpoint checks passed: Dex OIDC discovery `200`, Flux Web UI `200`, dashboard redirect to Dex `302`, stats dashboard redirect to Dex `302`, public stats `/status` `200`, public `/count.js` `200`, empty `/count` reached GoatCounter's expected validation response, portfolio/Pong health `200`, and valid Let's Encrypt certificates for Dex, Flux, stats, and dashboard.
+- RBAC checks passed: Headlamp's fixed backend ServiceAccount has the intended admin access behind the exact Dex/OAuth2 Proxy allowlist, `belakkuz@gmail.com` has `flux-web-admin` and Flux action verbs, and no credentials appeared in Git or rendered manifests. The Google connector's live redirect targets `accounts.google.com` with callback `https://dex.belacca.com/callback`.
+- Known limitation is documented in `belacca-gitops/docs/SSO.md`: GoatCounter does not consume OAuth2 Proxy identity headers, so Dex gates its public hostname and the application account is aligned to `belakkuz@gmail.com`, but GoatCounter's own dashboard session cookie remains an application-level login. A browser-based Google login and this second GoatCounter application-session step require an operator account/session and were not automated with `curl`.
 
 ## Final coordinator state
 
