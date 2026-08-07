@@ -33,8 +33,8 @@ The workspace currently has:
 - an **active-public** single-host cluster at context `k3d-pong`, still serving
   public application traffic and retained as the rollback path;
 - a **native-staging** three-server k3s migration target with healthy control
-  plane, Flux, SOPS/age, Longhorn, Flux-managed Traefik, and private route-less
-  Pong/portfolio staging workloads;
+  plane, Flux, SOPS/age, Longhorn, cert-manager controller/CRDs, Flux-managed
+  Traefik, and private route-less Pong/portfolio staging workloads;
 - no public application DNS, ingress ownership, production data, or protected
   production PVC cutover to native staging;
 - GitHub Actions that build and test images on hosted runners;

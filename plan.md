@@ -9,8 +9,8 @@ workloads, PVCs, or the current production edge.
 
 The native platform foundation is healthy and the migration is proceeding as a
 staged blue/green build. The three-server native k3s cluster, embedded etcd,
-Flux, SOPS/age, Longhorn, and a stateless native Traefik edge have all been
-validated. The original k3d cluster on `.73` is still the active production
+Flux, SOPS/age, Longhorn, cert-manager controller/CRDs, and a stateless native
+Traefik edge have all been validated. The original k3d cluster on `.73` is still the active production
 cluster and still owns public application traffic on ports 80/443.
 
 **No public application DNS, ingress ownership, production data, or protected
@@ -37,9 +37,12 @@ Overall state: **healthy staging foundation; migration not yet complete.**
   cluster documentation with the explicit active-public/native-staging model.
 - Hardened the native Traefik definition with explicit provider class filters,
   bounded CPU/memory, `minReadySeconds`, immutable image digest, and Flux root
-  health checks for Longhorn and Traefik. The hardened edge was applied and
-  validated in place; its GitOps source changes remain local pending review and
-  publication.
+  health checks for Longhorn and Traefik. The hardened edge was applied,
+  validated, and published under Flux ownership.
+- Added a native cert-manager `v1.21.1` controller/CRD-only boundary with
+  immutable component image digests, bounded resources, retained CRDs, and a
+  Flux health gate. No Cloudflare credential, DNS solver, Issuer, Certificate,
+  route, or public DNS record is included.
 - Added explicit Makefile rendering for both old-production and native GitOps
   roots so validation cannot silently check only one migration plane.
 
@@ -87,10 +90,11 @@ Overall state: **healthy staging foundation; migration not yet complete.**
 
 - Bootstrapped Flux `v2.9.3` into the native `belacca-production` path.
 - Native Flux source and root Kustomization are `Ready=True` at revision
-  `312bb1d`. The native edge and both route-less application Kustomizations are
-  Flux-owned and Ready: Pong is at `958a0ad`, and portfolio is at generated
-  deployment revision `15808ea`. Their private staging workloads are live; no
-  public route or production-state ownership has been introduced.
+  `83c663b`. The native edge, cert-manager, and both route-less application
+  Kustomizations are Flux-owned and Ready: Pong is at `958a0ad`, and portfolio
+  is at generated deployment revision `15808ea`. Their private staging
+  workloads are live; no public route or production-state ownership has been
+  introduced.
 - Removed old-production OAuth, Cloudflare, analytics-admin, and proxy Secret
   manifests from native staging. Native Git now contains namespace declarations
   only under `secrets/`; the out-of-band `flux-system/sops-age` decryption
@@ -157,17 +161,18 @@ not serving application routes yet.
   4. The corrected chart now reconciles successfully and both pods use the
      digest-pinned image.
 
-The edge manifests and native Flux health-gate changes are published in
-GitOps commit `312bb1d` under:
+The edge manifests, cert-manager controller boundary, and native Flux health
+checks are published in GitOps commit `83c663b` under:
 
 ```text
 belacca-gitops/clusters/belacca-production/edge/
 belacca-gitops/clusters/belacca-production/kustomization.yaml
 ```
 
-Flux owns the edge and route-less application Kustomizations. Native Traefik,
-Pong, and portfolio staging are Ready; the workloads remain private ClusterIP
-resources with no public route, certificate, or production-state ownership.
+Flux owns the edge, cert-manager controller, and route-less application
+Kustomizations. Native Traefik, cert-manager, Pong, and portfolio staging are
+Ready; all application Services remain private ClusterIP resources with no
+public route, issued application certificate, or production-state ownership.
 
 ### 7. Production safety checks
 
@@ -196,9 +201,10 @@ The immediate work is to turn the validated native edge into a complete,
 GitOps-owned, application-capable migration target without affecting the old
 production edge.
 
-1. **Finish native edge ownership.** Review the local Traefik manifests, publish
-   them to `belacca-gitops`, and let native Flux adopt the exact resources. The
-   manual staging resources must not remain an undocumented parallel owner.
+1. **Finish native edge/TLS ownership.** The Traefik and cert-manager
+   controller boundaries are Flux-owned. Next, review the DNS-01 credential,
+   Issuer, certificate Secret, and route ownership design without exposing
+   production ACME state or changing public DNS.
 2. **Choose the stable k3s API endpoint.** Determine whether the VPS provider
    supplies a floating IP or TCP load balancer. Prefer that endpoint for
    `k3s-api.belacca.com:6443`; the current three-A-record arrangement is only a
@@ -235,13 +241,13 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 |---|---|---|
 | Stable k3s API endpoint | DNS name resolves to three A records; kubeconfig still uses `.41` | Confirm provider floating IP or TCP LB, then switch and failure-test the endpoint |
 | Native public ingress | Direct listeners and Flux-owned route-less edge work on `.41`/`.42`; no public routes | Choose TLS/ACME, stage reviewed routes, and validate before DNS cutover |
-| ACME state | Old k3d ACME file is RWO/local-path | Do not multi-mount; choose single-writer or certificate-manager design |
+| ACME state | cert-manager controller/CRDs are Ready; no Issuer, Certificate, DNS solver, credential, or certificate state exists | Add only a reviewed Cloudflare DNS-01 Secret/Issuer/Certificate contract; never multi-mount old `acme.json` |
 | Native applications | Route-less Pong/portfolio Kustomizations are Ready; private workloads and Longhorn Pong PVC are live | Run private functional tests, then add reviewed routing only after TLS/state gates |
 | Stateful data | Existing data remains on old k3d/local-path PVCs | Back up, restore to Longhorn, verify, and preserve single-writer SQLite |
 | Off-cluster backups | Contract/documentation exists, scheduled external backup does not | Supply object storage, encryption/KMS, retention, and restore rehearsal |
 | Authenticated synthetic checks | Public redirect contracts exist; interactive login is manual | Complete browser/operator checks and add external dashboard/analytics runners |
 | GitOps publication | Infrastructure, Pong, portfolio, and GitOps child commits are published; native root/edge/application inventories are Ready | Keep parent pins current and preserve Flux ownership during route/state work |
-| Native staging credentials | Old-production encrypted credential manifests were removed from native Git and live native objects | Add only explicitly staging-scoped credentials with a reviewed consumer/lifecycle when native apps are actually staged |
+| Native staging credentials | Old-production encrypted credential manifests were removed; cert-manager has only generated internal CA/Helm Secrets | Add only explicitly staging-scoped credentials with a reviewed consumer/lifecycle; Cloudflare DNS-01 remains blocked |
 | State migration | Read-only audit disposition is NO-GO; no target PVCs or verified artifacts exist | Establish native context/Longhorn evidence, target contracts, quiescence, integrity-checked backups, and restore rehearsal |
 
 ### Resolved problems
@@ -294,8 +300,10 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 - [x] Validate pinned Traefik chart and immutable image.
 - [x] Validate direct native HTTP/HTTPS listeners on both new nodes.
 - [x] Publish and adopt the Traefik HelmRelease through Flux. GitOps commit
-      `312bb1d` contains the reviewed HelmRepository/HelmRelease, and the live
+      `83c663b` contains the reviewed HelmRepository/HelmRelease, and the live
       release is Flux-owned and Ready.
+- [x] Stage the cert-manager `v1.21.1` controller and CRDs through Flux with
+      immutable images, bounded resources, retained CRDs, and no ACME consumer.
 - [ ] Choose the ACME/certificate state architecture for two edge nodes.
       Current recommendation: cert-manager DNS-01 plus namespace-local TLS
       Secrets; do not use the old shared RWO `acme.json` design.
@@ -312,14 +320,16 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 - [x] Deploy private route-less portfolio and Pong gateway/static/API staging
       workloads; Dex, Headlamp, analytics, and Flux UI remain deferred until
       their own secrets, routes, and state contracts are reviewed.
-- [ ] Create Longhorn-backed PVCs with explicit reclaim and single-writer
-      policies.
+- [x] Create the native Pong Longhorn-backed RWO PVC with explicit prune/keep
+      protection and verify its healthy three-replica volume; other stateful
+      target PVC contracts remain pending.
 - [ ] Produce verified copies of existing Pong, GoatCounter, Dex, and required
       ACME/application state outside the old cluster. This remains explicitly
       NO-GO until quiescence and integrity/restore evidence exist.
 - [ ] Restore and checksum/validate SQLite data in native PVCs.
-- [ ] Run application startup, readiness, authentication, collector, and
-      WebSocket tests against native nodes.
+- [x] Run private native startup/readiness, origin, WebSocket, disposable-room,
+      cleanup, portfolio, and route-exposure tests; authenticated operator and
+      analytics tests remain deferred.
 
 ### Phase 4 — Cutover and rollback validation
 
@@ -364,8 +374,8 @@ Old production:    k3d-pong on .73, still serving public traffic
 - `/root/sources/belacca-platform`: parent documentation and child gitlink
   updates are pending this final publication.
 - `/root/sources/belacca-platform/belacca-gitops`: published native root,
-  edge, source, application, and credential-boundary state at `312bb1d`; Flux
-  reconciliation is Ready.
+  edge, cert-manager controller/CRD, source, application, and
+  credential-boundary state at `83c663b`; Flux reconciliation is Ready.
 - `cloudnativepong`: published native-staging and cleanup state at `958a0ad`.
 - `francesco-belacca-site`: published documentation and generated deployment
   state at `15808ea`.
