@@ -370,9 +370,9 @@ Old production:    k3d-pong on .73, still serving public traffic
 ### Repository state
 
 - `/root/sources/belacca-infrastructure`: published safeguards/documentation
-  commit `27cdb5c`.
+  and cert-manager-boundary documentation at commit `7a61b86`.
 - `/root/sources/belacca-platform`: parent documentation and child gitlink
-  updates are pending this final publication.
+  state is published at the current parent commit.
 - `/root/sources/belacca-platform/belacca-gitops`: published native root,
   edge, cert-manager controller/CRD, source, application, and
   credential-boundary state at `83c663b`; Flux reconciliation is Ready.
