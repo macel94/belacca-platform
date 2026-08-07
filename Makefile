@@ -1,6 +1,8 @@
-.PHONY: init status evidence-test site-test status-test pong-test manifests validate evidence-bundle
+.PHONY: init status evidence-test site-test status-test pong-test manifests manifests-native-edge validate evidence-bundle
 
 SHELL := /usr/bin/env bash
+
+NATIVE_EDGE_SOURCE ?= belacca-gitops/clusters/belacca-production/edge
 
 init:
 	git submodule update --init --recursive
@@ -42,6 +44,17 @@ manifests:
 	kubectl kustomize belacca-gitops/clusters/vmi3474918/routing >/tmp/belacca-platform-routing.yaml
 	@echo 'Rendered manifests:'
 	@wc -l /tmp/belacca-platform-{pong,site,gitops,routing}.yaml
+
+# Optional migration check; never silently skip the native edge.
+manifests-native-edge:
+	@if [ ! -f "$(NATIVE_EDGE_SOURCE)/kustomization.yaml" ]; then \
+		echo "Native edge source is absent: $(NATIVE_EDGE_SOURCE)" >&2; \
+		exit 1; \
+	fi
+	kubectl kustomize belacca-gitops/clusters/belacca-production >/tmp/belacca-platform-gitops-native.yaml
+	kubectl kustomize "$(NATIVE_EDGE_SOURCE)" >/tmp/belacca-platform-edge-native.yaml
+	@echo 'Rendered native migration manifests:'
+	@wc -l /tmp/belacca-platform-{gitops-native,edge-native}.yaml
 
 validate: site-test status-test pong-test manifests
 	git diff --check

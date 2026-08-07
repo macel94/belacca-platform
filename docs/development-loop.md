@@ -30,16 +30,30 @@ immutable, and Git-backed.
 The workspace currently has:
 
 - `cloudnativepong` local mode for the fastest application feedback;
-- a persistent public/production-like cluster at context `k3d-pong`;
+- an **active-public** single-host cluster at context `k3d-pong`, still serving
+  public application traffic and retained as the rollback path;
+- a **native-staging** three-server k3s migration target with healthy control
+  plane, Flux, SOPS/age, Longhorn, Flux-managed Traefik, and private route-less
+  Pong/portfolio staging workloads;
+- no public application DNS, ingress ownership, production data, or protected
+  production PVC cutover to native staging;
 - GitHub Actions that build and test images on hosted runners;
 - Flux polling the application sources and reconciling production manifests;
 - no separate persistent `pong-dev` cluster or service-interception workflow yet.
 
-The public `k3d-pong` cluster is **not** a development sandbox. Do not use it
-for repeated experiments, temporary image patches, or destructive cluster
+The two cluster roles must not be conflated. Neither active-public `k3d-pong`
+nor native-staging k3s is a development sandbox. Native staging is reserved for
+reviewed migration validation and cutover rehearsal; do not use it for repeated
+experiments, temporary image patches, ad hoc deployments, or destructive
 lifecycle operations. Until a separate development plane exists, use local mode
 for ordinary changes and an explicitly disposable, isolated environment for
 Kubernetes integration work.
+
+The migration execution state is tracked in the parent
+[`plan.md`](../plan.md). Host preparation and native k3s prerequisites live in
+the sibling [`belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
+repository; Kubernetes resource ownership and Flux cutover rules live in
+[`belacca-gitops/MIGRATION.md`](../belacca-gitops/MIGRATION.md).
 
 On the current host, `kubectl` can reach the existing cluster, but the installed
 `k3d` command currently cannot list it because it is trying to use Docker while
@@ -98,8 +112,10 @@ These checks are validation gates, not the default command after every save.
 
 Some changes genuinely need Kubernetes: Pod and Service orchestration, RBAC,
 NetworkPolicies, room callbacks, scheduling, DNS behavior, or the gateway path.
-Those changes should use a separate, warm development plane rather than the
-production cluster or a newly-created cluster for every edit.
+Those changes should use a separate, warm development plane rather than either
+the active-public cluster or the native-staging migration target, and rather
+than a newly-created cluster for every edit. Native staging is not a substitute
+for `pong-dev`.
 
 ### Preferred target: local process interception
 
@@ -169,7 +185,8 @@ boundaries:
 - separate local registry and development image names;
 - development origins and host ports;
 - no production Flux ownership;
-- no access to `k3d-pong` resources or production secrets;
+- no access to `k3d-pong` resources, native-staging resources, or production
+  secrets;
 - scripts that fail closed unless the selected context is `k3d-pong-dev` or an
   explicitly generated disposable context;
 - an easy reset path that cannot delete production resources.
@@ -243,6 +260,9 @@ expensive operations when they are irrelevant to the question being tested.
 
 ## References
 
+- [Platform migration status and execution plan](../plan.md)
+- [Sibling host infrastructure](https://github.com/macel94/belacca-infrastructure)
+- [Sibling infrastructure migration plan](https://github.com/macel94/belacca-infrastructure/blob/main/docs/MIGRATION-PLAN.md)
 - [Tilt Live Update](https://docs.tilt.dev/live_update_reference.html)
 - [k3d local registries](https://k3d.io/stable/usage/registries/)
 - [k3d with Podman](https://k3d.io/v5.9.0/usage/advanced/podman/)

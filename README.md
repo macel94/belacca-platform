@@ -20,6 +20,12 @@ before the parent can record a valid submodule pointer. The parent repository
 does not flatten or duplicate child history, so each project can still be
 reviewed, built, and deployed independently.
 
+The native host foundation is maintained in the sibling
+[`macel94/belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
+repository, which owns host preparation, firewall posture, native k3s
+configuration, and storage prerequisites. Kubernetes resources and Flux
+ownership remain in `belacca-gitops/`.
+
 ## Clone everything
 
 ```bash
@@ -47,10 +53,32 @@ make pong-test    # Go tests, race tests, and vet
 make manifests    # render Pong, site, and platform Kustomizations
 ```
 
-For the fast development model, read
-[`docs/development-loop.md`](docs/development-loop.md). Local process mode is
-the default inner loop; the public `k3d-pong` cluster is not a development
-sandbox, and GitOps is reserved for reviewed production promotion.
+## Migration state
+
+The migration is a blue/green build with two deliberately separate planes:
+
+- **active-public:** the existing single-host `k3d-pong` cluster on `.73` still
+  owns public application traffic and remains the production rollback path;
+- **native-staging:** the validated three-server native k3s cluster is the
+  migration target. Its control plane, Flux, SOPS/age, Longhorn, Flux-managed
+  Traefik, and private route-less Pong/portfolio staging workloads are healthy,
+  but no public application DNS, ingress ownership, production data, or
+  protected production PVC has been cut over.
+
+The execution state and remaining gates are tracked in [`plan.md`](plan.md).
+The host-level companion plan is in the sibling
+[`belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
+repository and its
+[`docs/MIGRATION-PLAN.md`](https://github.com/macel94/belacca-infrastructure/blob/main/docs/MIGRATION-PLAN.md);
+[`belacca-gitops/MIGRATION.md`](belacca-gitops/MIGRATION.md) documents
+Kubernetes ownership and cutover rules.
+
+Native staging is migration validation only, **not a development sandbox**.
+Do not use it for iterative source edits, temporary image patches, or
+experiments. For the fast development model, read
+[`docs/development-loop.md`](docs/development-loop.md). Use local process mode
+or an explicitly disposable, isolated development environment until a separate
+warm development plane exists. GitOps is reserved for reviewed promotion.
 
 `make update` changes the checked-out submodule commits and stages the parent
 Gitlinks, but does not commit or push. Review the resulting parent diff before
@@ -90,6 +118,8 @@ protected operator surfaces or aliases, not public applications.
 ## Safety model
 
 - Do not delete or recreate the `k3d-pong` cluster from this workspace.
+- Treat native k3s as migration staging only; do not use native staging as a
+  development sandbox or apply ad hoc experiments there.
 - Do not delete `pong-api-data`, its PV, or `kube-system/traefik-acme`.
 - Flux ownership and migration rules are documented in
   `belacca-gitops/MIGRATION.md`.

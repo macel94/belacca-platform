@@ -1,225 +1,388 @@
-# Belacca Platform SRE Improvement Plan
+# Belacca native k3s migration — status and execution plan
 
-> Resumable execution plan for `belacca-platform`.
->
-> Last updated: 2026-08-07
-> Coordinator: primary pi session
-> Agent model policy: all delegated agents must use `openai/gpt-5.6-luna`.
-> Git policy: do not stage or commit automatically; review nested repositories and parent gitlinks separately.
+**Status date:** 2026-08-07 19:12 CEST
+**Scope:** migrate the live single-host `k3d-pong` platform on `.73` to a
+three-server native k3s HA cluster without deleting or casually recreating
+workloads, PVCs, or the current production edge.
 
-## Resume protocol
+## Executive status
 
-1. Read this file from top to bottom.
-2. Inspect `git status --short --branch` in the parent and each nested repository.
-3. Check the **Verification log** and **Final coordinator state** before changing code.
-4. Continue with the first unchecked item whose prerequisites are satisfied.
-5. After every valuable, verified capability:
-   - run the narrowest relevant tests;
-   - update the owning repository documentation;
-   - update this file with the implementation, verification, and follow-up;
-   - do not claim completion from manifest rendering alone when cluster validation is required.
-6. Never delete or recreate the existing `k3d-pong` cluster or protected PVCs.
-7. Never commit secrets, tokens, private telemetry, or credentials.
+The native platform foundation is healthy and the migration is proceeding as a
+staged blue/green build. The three-server native k3s cluster, embedded etcd,
+Flux, SOPS/age, Longhorn, and a stateless native Traefik edge have all been
+validated. The original k3d cluster on `.73` is still the active production
+cluster and still owns public application traffic on ports 80/443.
 
-## Scope and success criteria
+**No public application DNS, ingress ownership, production data, or protected
+production PVC has been cut over.** Private route-less Pong and portfolio
+staging workloads are live on native ClusterIP Services; existing public
+services remain available and returned HTTP 200 during the native work.
 
-Implement the practical SRE improvements proposed for:
+Overall state: **healthy staging foundation; migration not yet complete.**
 
-- `pong.belacca.com` / `cloudnativepong/`: abuse resistance, user-facing telemetry, resilience tests, room isolation, and delivery provenance.
-- `francesco.belacca.com` / `francesco-belacca-site/`: public reliability documentation/status experience, security/performance verification, and generated operational metadata where safe.
-- `belacca-gitops/`: SLO/incident integration, observability plumbing, Flux notifications, network isolation, workload disruption policy, backup/restore automation, supply-chain verification, and service catalog metadata.
-- Parent workspace: repeatable validation, documentation synchronization, and resume-friendly operational tooling.
+## This continuation’s completed work
 
-The target is not merely more Kubernetes resources. The target loop is:
+- Audited the native edge, API endpoint, ACME design, documentation, and stale
+  file candidates in parallel using tmux sessions with `openai/gpt-5.6-luna`.
+- Confirmed that the old `belacca-gitops/clusters/vmi3474918` tree, protected
+  ACME/PVC manifests, k3d systemd rollback service, infrastructure safeguards,
+  CI/restore contracts, and encrypted key state must remain until cutover.
+- Removed only the audited obsolete `cloudnativepong/clusters/vmi3474918/`
+  child Flux tree and superseded historical `cloudnativepong/HANDOFF.md`.
+- Removed the duplicate `cloudnativepong/k8s/all.yaml` after migrating CI and
+  restore rehearsal to the explicit disposable `k8s/overlays/test/` overlay.
+  Production remains `k8s/overlays/server/`; both overlays retain their own
+  image/origin/PVC safety contracts.
+- Updated infrastructure, GitOps, Pong, portfolio, parent-workspace, and native
+  cluster documentation with the explicit active-public/native-staging model.
+- Hardened the native Traefik definition with explicit provider class filters,
+  bounded CPU/memory, `minReadySeconds`, immutable image digest, and Flux root
+  health checks for Longhorn and Traefik. The hardened edge was applied and
+  validated in place; its GitOps source changes remain local pending review and
+  publication.
+- Added explicit Makefile rendering for both old-production and native GitOps
+  roots so validation cannot silently check only one migration plane.
+
+## What has been accomplished
+
+### 1. Host onboarding and infrastructure baseline
+
+- Audited all three Debian 13 VPSs. The two new servers are equivalent to the
+  existing host at roughly 6 vCPUs, 11 GiB RAM, and 197 GiB disk.
+- Created and published the private `macel94/belacca-infrastructure`
+  repository with Ansible inventory, host preparation, k3s configuration,
+  firewall policy, Longhorn prerequisites, and recovery documentation.
+- Installed the dedicated automation SSH key on the new hosts and disabled
+  password SSH on `.41` and `.42`. Key-based access is verified.
+- Intentionally left the existing `.73` hostname and k3d-compatible firewall
+  unchanged. Its SSH hardening remains a deliberate cutover task rather than
+  an accidental production mutation.
+- Prepared all hosts with required kernel modules, Kubernetes sysctls,
+  inotify limits, iSCSI, NFS, cryptsetup, and Longhorn prerequisites.
+- Restricted firewall rules are active on `.41` and `.42`; `.73` remains on its
+  existing edge-compatible policy.
+
+### 2. Native three-server HA k3s cluster
+
+- Installed pinned native k3s `v1.35.5+k3s1` on all three hosts.
+- Configured all three as control-plane/embedded-etcd servers:
+  - `belacca-k3s-01` — `169.58.97.73`
+  - `belacca-k3s-02` — `169.58.143.41`
+  - `belacca-k3s-03` — `169.58.143.42`
+- Disabled built-in k3s Traefik and ServiceLB so native ingress could be
+  staged beside the existing k3d edge.
+- Resolved the `.73` native-server join failure caused by host inotify
+  exhaustion by increasing the host limits.
+- Verified all three native nodes are `Ready`, the API `/readyz` endpoint is
+  healthy, embedded etcd is operating, and metrics-server is healthy.
+- Created DNS-only `k3s-api.belacca.com` A records for all three node IPs.
+  Public DNS-over-HTTPS and the local resolver now return all three records;
+  the k3s certificate contains the DNS name and all node IP SANs.
+- The working operator kubeconfig still points directly to `.41` at
+  `/root/.kube/belacca-native`. The DNS endpoint has been separately tested
+  successfully, but a provider load balancer/floating-IP endpoint has not yet
+  been selected.
+
+### 3. Flux and encrypted secrets
+
+- Bootstrapped Flux `v2.9.3` into the native `belacca-production` path.
+- Native Flux source and root Kustomization are `Ready=True` at revision
+  `312bb1d`. The native edge and both route-less application Kustomizations are
+  Flux-owned and Ready: Pong is at `958a0ad`, and portfolio is at generated
+  deployment revision `15808ea`. Their private staging workloads are live; no
+  public route or production-state ownership has been introduced.
+- Removed old-production OAuth, Cloudflare, analytics-admin, and proxy Secret
+  manifests from native staging. Native Git now contains namespace declarations
+  only under `secrets/`; the out-of-band `flux-system/sops-age` decryption
+  Secret remains cluster-local and is not a Git manifest.
+- Backed up the age private key and k3s token through the private infrastructure
+  repository's GitHub secret mechanism. The runtime values remain out of Git.
+- Existing application repositories and their published changes remain
+  separately reviewable; parent submodule pointer changes are not an
+  automatic commit operation.
+
+### 4. Replicated storage foundation
+
+- Installed Longhorn `1.12.0` through native Flux.
+- Configured a non-default `longhorn` StorageClass with three replicas and
+  `Retain` reclaim policy. The existing `local-path` default was not replaced.
+- Verified Longhorn managers, CSI components, engine images, instance managers,
+  disks, and nodes are healthy on all three servers.
+- Created, wrote to, read from, and removed a temporary three-replica Longhorn
+  volume successfully.
+- No Pong, GoatCounter, Dex, or ACME production data has been restored into
+  native Longhorn yet.
+
+### 5. Application image/runtime correction
+
+- Diagnosed the previous Caddy failure (`exec /usr/bin/caddy: operation not
+  permitted`) as inherited file capabilities in the image.
+- Removed the unnecessary Caddy file capability and published corrected Pong
+  and portfolio image/deployment revisions:
+  - Pong source/deployment: `32b6f6a` / `ec2bbe8`
+  - Portfolio source/deployment: `b2ba04b` / `da677cf`
+- Existing public Pong and portfolio services continued serving successfully.
+
+### 6. Native Traefik edge staging
+
+A native edge has been staged on the two new servers only. It is intentionally
+not serving application routes yet.
+
+- Validated the official Traefik chart `41.2.0` / Traefik `v3.7.10`.
+- The staged release is a DaemonSet constrained to:
+  - `.41` / `belacca-k3s-02`
+  - `.42` / `belacca-k3s-03`
+- Each node binds host ports 80 and 443 directly. `.73` is excluded, so the
+  old k3d process remains the only public edge on the existing host.
+- The native release has no ServiceLB/LoadBalancer Service, no ACME PVC, and no
+  application route yet.
+- The container runs non-root with RuntimeDefault seccomp, read-only root
+  filesystem, privilege escalation disabled, all capabilities dropped except
+  `NET_BIND_SERVICE`, and an immutable verified Traefik image index digest:
+  `sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac`.
+- The DaemonSet replacement strategy was corrected to avoid host-port collision:
+  `maxUnavailable: 1`, `maxSurge: 0`.
+- Current native edge state:
+  - HelmRepository `traefik`: `Ready=True`
+  - HelmRelease `traefik`: `Ready=True`, chart `41.2.0`
+  - two Traefik pods `Running/Ready`, one on each new server
+  - direct HTTP and HTTPS requests to both new node IPs return the expected
+    empty-router `404`
+- Earlier edge errors were transient and resolved:
+  1. Helm's offline render needed the Kubernetes `policy/v1` capability
+     explicitly advertised.
+  2. A rolling update initially tried to bind replacement host ports before
+     removing old pods.
+  3. The first immutable image repository value duplicated `docker.io/`.
+  4. The corrected chart now reconciles successfully and both pods use the
+     digest-pinned image.
+
+The edge manifests and native Flux health-gate changes are published in
+GitOps commit `312bb1d` under:
 
 ```text
-user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested recovery
+belacca-gitops/clusters/belacca-production/edge/
+belacca-gitops/clusters/belacca-production/kustomization.yaml
 ```
 
-## Workstreams
+Flux owns the edge and route-less application Kustomizations. Native Traefik,
+Pong, and portfolio staging are Ready; the workloads remain private ClusterIP
+resources with no public route, certificate, or production-state ownership.
 
-### A. Baseline and contracts
+### 7. Production safety checks
 
-- [x] Inventory current repositories, workloads, public endpoints, CI, Flux, security controls, and stateful data.
-- [x] Research current SRE/platform trends and primary guidance (SLOs, burn-rate alerting, OpenTelemetry, Flux notifications, SLSA/Sigstore, Kubernetes resilience).
-- [x] Add a validated platform service catalog with service owner, public host, tier, dependencies, SLO, RTO, RPO, dashboard, and runbook fields. (Catalog validator and Kustomize/JSON validation pass.)
-- [x] Define practical initial SLOs/SLIs for portfolio, Pong lobby, Pong game sessions, analytics, and dashboard. (Initial targets and proposed/measured status are documented; no item is claimed measured without telemetry.)
-- [x] Document the current single-host/node-local-storage failure domain and the intentional single-writer SQLite boundary. (GitOps reliability docs and catalog metadata are updated.)
+Repeated checks during staging confirmed HTTP 200 for:
 
-### B. Pong application reliability and abuse resistance (`cloudnativepong/`)
+- `belacca.com`
+- `www.belacca.com`
+- `pong.belacca.com`
+- `dashboard.belacca.com`
+- `flux.belacca.com`
+- `stats.belacca.com`
+- `francesco.belacca.com`
 
-- [x] Validate WebSocket `Origin` against an explicit production/local allowlist; add tests. (Production and local origins are configured separately; exact normalization/rejection tests pass.)
-- [x] Add bounded request bodies, HTTP server timeouts, method/content validation, and correct error status codes. (Strict bounded JSON decoding, status mapping, and server timeouts implemented and tested.)
-- [x] Add per-client rate/concurrency limits for room creation, joins, HTTP, and WebSocket sessions; expose safe configuration. (Bounded in-process admission with safe positive environment overrides and limiter tests implemented.)
-- [x] Add application metrics for HTTP, rooms, room lifecycle, Pod orchestration, SQLite, WebSockets, admission, callbacks, and cleanup. (Fixed-name counters/gauges are integrated without labels/high-cardinality values; tests pass.)
-- [x] Add a minimal `/metrics` endpoint with bounded labels and document the scrape contract. (Dependency-free Prometheus exposition with no labels and regression tests implemented.)
-- [x] Add trace/request correlation IDs without logging names, IPs, tokens, or room contents. (Opaque validated IDs, response/callback propagation, and safe logging scrub are tested.)
-- [x] Harden dynamic room Pods: non-root, no token, no privilege escalation, dropped capabilities, read-only root, and RuntimeDefault seccomp in generated and checked-in templates. (Digest pinning and full network policy remain open.)
-- [x] Add room lifecycle and failure-injection tests: restart, missing callback, orphan cleanup, quota/admission rejection, Pod failure, and cleanup retry behavior. (Dependency-injected orchestration tests pass.)
-- [x] Add load/smoke tooling for room creation, join, WebSockets, cleanup latency, and resource ceilings. (Bounded aggregate-only harness plus local HTTP/origin and two-player synthetic passed; sustained public load remains external.)
-- [x] Reconcile Pong operational documentation with each verified implementation. (README, DEPLOYMENT, and HANDOFF document telemetry, admission, origins, provenance, synthetic, recovery, Caddy/Distroless runtime choices, WebSocket compatibility, optional WebTransport, and current limitations.)
+The following have **not** happened:
 
-### C. Observability and SLO enforcement (`belacca-gitops/` plus applications)
+- no public application DNS change;
+- no public load balancer change;
+- no deletion or recreation of `k3d-pong`;
+- no deletion of protected application, analytics, Dex, or ACME PVCs;
+- no native application-data restore;
+- no production ingress ownership switch.
 
-- [x] Choose a deliberately small observability stack appropriate for one k3d host. (Staged plain Prometheus v3.13.2, one replica, private ClusterIP, 7-day/2 GB ephemeral retention; no heavyweight Operator/CRD dependency.)
-- [x] Add Prometheus-compatible collection for application metrics and Kubernetes/Flux state. (Pinned Prometheus manifest, static Pong/Flux scrape config, bounded sample limits, and private network policy render; collector is staged but not yet reconciled.)
-- [x] Add OpenTelemetry Collector and at least one end-to-end Pong trace path, or document a tested staged implementation if cluster constraints prevent rollout. (Pong now emits opt-in OTLP/HTTP spans with W3C propagation through HTTP, room callbacks, and proxy WebSockets; no collector is claimed deployed.)
-- [x] Add the Pong blackbox/external synthetic check for the create/join/WebSocket workflow. (The scheduled Pong GitHub Actions runner executes the canonical homepage/health/create/join/two-player WebSocket/cleanup journey.)
-- [ ] Add active blackbox runners for the portfolio, analytics, and authenticated dashboard contracts. (Machine-readable contracts exist; their external runners remain operator-owned prerequisites.)
-- [x] Add SLO recording/alert rules and multi-window burn-rate alerts; avoid paging on symptoms that do not consume meaningful budget. (Nine proposed recording/alert rules validate with official promtool; runtime measurement/destination remains open.)
-- [x] Add dashboards for user journeys, deployment health, room lifecycle, node capacity, storage, certificates, and Flux reconciliation. (Private staged dashboard JSON/query source is validated; Grafana installation and live panels remain open.)
-- [x] Add Flux notifications for source/Kustomization/Helm failures and successful deployment status. (Provider/Alert resources render and server-side dry-run; destination Secret remains intentionally out of band.)
-- [x] Keep telemetry retention, cardinality, and privacy controls explicit. (Pong metrics have no labels; GitOps docs state proposed SLO/telemetry status and external prerequisites.)
-- [x] Reconcile GitOps and runbook documentation after each deployed capability. (README, cluster README, migration, subdomain, notifications, and reliability docs updated.)
+## What is being worked on now
 
-### D. GitOps security and resilience (`belacca-gitops/`)
+The immediate work is to turn the validated native edge into a complete,
+GitOps-owned, application-capable migration target without affecting the old
+production edge.
 
-- [x] Add default-deny NetworkPolicies and least-privilege allow rules for portfolio, Pong, analytics, Headlamp/OAuth, and observability. (Scoped policies render and pass server-side dry-run; runtime CNI connectivity validation remains.)
-- [x] Add PodDisruptionBudgets and topology spread/anti-affinity only where they reflect real replicas and the three-node topology. (PDBs added only for confirmed two-replica workloads; topology spread remains follow-up.)
-- [x] Add startup/readiness/liveness probe review; do not use liveness checks that can amplify outages. (Startup probes added to Pong gateway/static/API, CI manifest copies, and portfolio; existing liveness checks remain bounded.)
-- [ ] Add encrypted off-cluster backups for Pong and GoatCounter with retention and explicit RPO/RTO. (External storage/key prerequisites remain unresolved.)
-- [x] Add a restore verification job/process in an ephemeral k3d environment; prove application startup and synthetic workflows after restore. (SQLite online-backup/restore self-test and fail-closed isolated runner/dry-run are validated; real disposable-cluster run remains prerequisite dependent.)
-- [x] Add controlled game-day/failure tests to CI or a documented operator workflow. (Bounded gateway/static/API/room/Flux/NetworkPolicy drills documented and recovery contract validated.)
-- [x] Finish the Flux ownership migration safely and enable root pruning only after inventory and protected-state verification. (Root `prune: true` is published in the GitOps tree after live root-inventory coverage, disjoint child inventories, Ready children, public route checks, and protected state verification; the staged observability child remains `prune: false`.)
-- [x] Reconcile DNS/ACME documentation with the actual committed DNS-01 Traefik configuration. (GitOps docs now describe Cloudflare DNS-01 and the real Secret key contract.)
+1. **Finish native edge ownership.** Review the local Traefik manifests, publish
+   them to `belacca-gitops`, and let native Flux adopt the exact resources. The
+   manual staging resources must not remain an undocumented parallel owner.
+2. **Choose the stable k3s API endpoint.** Determine whether the VPS provider
+   supplies a floating IP or TCP load balancer. Prefer that endpoint for
+   `k3s-api.belacca.com:6443`; the current three-A-record arrangement is only a
+   fallback and is not a health-aware API load balancer.
+3. **Finish native TLS/ACME design.** The old ACME data is a single-writer
+   `ReadWriteOnce` volume. It must not simply be mounted into two Traefik pods.
+   Choose and test either a safe single-writer arrangement or a DNS-01
+   certificate-management design that produces a Kubernetes TLS Secret for
+   both edge nodes.
+4. **Stage native routing without public DNS changes.** Deploy the application
+   namespaces, services, routes, dashboard access, Dex, and TLS resources in
+   native GitOps. Validate them through direct node IPs/temporary host headers.
+5. **Migrate state safely.** Take verified external copies of Pong and GoatCounter
+   SQLite data, restore into Longhorn-backed single-writer PVCs, and validate
+   application startup and data integrity before any public cutover.
+6. **Run the native application test matrix.** Validate Pong create/join/
+   WebSocket behavior, portfolio health, analytics collector paths, Dex/OIDC,
+   Headlamp, Flux UI, certificates, redirects, NetworkPolicies, and rollback.
+7. **Cut over only after a review gate.** Move public ingress/API traffic through
+   the selected load balancer/DNS strategy, monitor the old and new paths in
+   parallel, and retain the k3d rollback path until the post-cutover checks
+   pass.
 
-### E. Software supply chain and delivery (`cloudnativepong/`, `francesco-belacca-site/`, `belacca-gitops/`)
+## Current problems, risks, and their status
 
-- [x] Generate SBOMs for every published image. (BuildKit publish workflows request SBOM attestations; release metadata/docs make registry resolution explicit.)
-- [x] Scan images and fail on an explicitly documented severity policy. (Trivy HIGH/CRITICAL report-only default plus manual strict gate are implemented and documented.)
-- [x] Publish native GitHub Artifact Attestations with SLSA/in-toto provenance. (`actions/attest@v4` signs and pushes provenance attestations to GHCR; repository-scoped `gh attestation verify` helpers and a promotion gate are implemented.)
-- [x] Deploy immutable image digests and verify GitHub provenance attestations before reconciliation where the cluster supports it. (Digest-only promotion and native attestation validation are implemented; live Flux/admission enforcement remains open.)
-- [x] Add a promotion gate from ephemeral integration validation to production image digest. (Release metadata validator runs in CI; digest promotion helper requires four exact GHCR digests and rejects mutable tags.)
-- [x] Preserve rollback metadata and connect deployments to source commits and Flux health. (Release metadata, source commit/tag contract, Flux runbooks, and rollback docs are committed.)
+### No active production outage
 
-### F. Portfolio reliability experience (`francesco-belacca-site/`)
+There is no known outage. The native cluster is healthy, the staged edge is
+healthy, and public services remain HTTP 200 through the old k3d edge.
 
-- [x] Add a public reliability/systems page that explains SLOs, architecture, delivery, backups, security boundaries, and incident practice without exposing secrets or infrastructure-sensitive details. (Static `/reliability.html` added; current versus planned capabilities are labeled.)
-- [x] Add a status surface backed by externally generated, sanitized status data; do not make the cluster the only source of its own status page. (Unknown-by-default `/status.html` + schema/contract + no-store artifact are shipped; external publisher remains a prerequisite.)
-- [x] Add version/build/deployment metadata safely and verify cache behavior. (Short build SHA substitution and cache/header checks verified with Podman.)
-- [x] Add automated accessibility, security-header, performance-budget, and link/redirect tests. (Static semantic/security/link checks and npm suite pass; external performance budget remains follow-up.)
-- [x] Reconcile site README and public copy with actual deployed capabilities after verification. (README, reliability page, discovery assets, sitemap, Caddy runtime, and portfolio/Pong transport copy are harmonized; external production observation remains separate.)
+### Open migration blockers
 
-### G. Bounded AI-assisted operations
+| Item | Current status | Required decision/action |
+|---|---|---|
+| Stable k3s API endpoint | DNS name resolves to three A records; kubeconfig still uses `.41` | Confirm provider floating IP or TCP LB, then switch and failure-test the endpoint |
+| Native public ingress | Direct listeners and Flux-owned route-less edge work on `.41`/`.42`; no public routes | Choose TLS/ACME, stage reviewed routes, and validate before DNS cutover |
+| ACME state | Old k3d ACME file is RWO/local-path | Do not multi-mount; choose single-writer or certificate-manager design |
+| Native applications | Route-less Pong/portfolio Kustomizations are Ready; private workloads and Longhorn Pong PVC are live | Run private functional tests, then add reviewed routing only after TLS/state gates |
+| Stateful data | Existing data remains on old k3d/local-path PVCs | Back up, restore to Longhorn, verify, and preserve single-writer SQLite |
+| Off-cluster backups | Contract/documentation exists, scheduled external backup does not | Supply object storage, encryption/KMS, retention, and restore rehearsal |
+| Authenticated synthetic checks | Public redirect contracts exist; interactive login is manual | Complete browser/operator checks and add external dashboard/analytics runners |
+| GitOps publication | Infrastructure, Pong, portfolio, and GitOps child commits are published; native root/edge/application inventories are Ready | Keep parent pins current and preserve Flux ownership during route/state work |
+| Native staging credentials | Old-production encrypted credential manifests were removed from native Git and live native objects | Add only explicitly staging-scoped credentials with a reviewed consumer/lifecycle when native apps are actually staged |
+| State migration | Read-only audit disposition is NO-GO; no target PVCs or verified artifacts exist | Establish native context/Longhorn evidence, target contracts, quiescence, integrity-checked backups, and restore rehearsal |
 
-- [x] Build a read-only incident evidence bundle or assistant input format from SLO status, Flux events, Kubernetes events, recent logs, deployment revisions, and runbooks. (Allowlisted, bounded `scripts/incident_evidence.py` collector emits JSON/Markdown evidence bundles.)
-- [x] Require evidence references, confidence, and human approval for any proposed action. (Bundle schema and documentation include source references, confidence, and pending human approval fields.)
-- [x] Never allow the assistant to mutate the cluster directly; changes must be reviewed GitOps commits/PRs. (Collector has read-only command allowlists and the contract requires GitOps-only changes.)
-- [x] Document data minimization and secret redaction. (Secret/token/password/JWT/private-key/IP-like redaction is tested.)
+### Resolved problems
 
-### H. Shared Google SSO and Flux Web UI (`belacca-gitops/`)
+- Native `.73` join failure from inotify exhaustion: fixed with host limits.
+- Documentation/recovery validator drift caused by the explicit old-production
+  vocabulary: fixed while retaining the validator’s safety markers.
+- Duplicate disposable/production Pong manifest paths: fixed by moving CI and
+  restore rehearsal to `k8s/overlays/test/` before deleting the old monolith.
+- Caddy execution failure from inherited file capabilities: fixed and images
+  republished.
+- Traefik Helm PDB render/API mismatch: handled by explicit Kubernetes API
+  rendering and disabling the unnecessary PDB for the DaemonSet.
+- Traefik host-port rolling collision: handled with `maxSurge: 0` and
+  `maxUnavailable: 1`.
+- Traefik digest image pull failure: fixed by using the chart's canonical
+  repository value `traefik` instead of `docker.io/library/traefik`.
 
-- [x] Interpret the requested “DAX” setup as the supplied guide's Dex-based Flux Web UI SSO and verify the current Flux Operator, Dex, Headlamp, OAuth2 Proxy, GoatCounter, and Cloudflare contracts against upstream documentation.
-- [x] Install the standalone Flux Operator Web UI chart (`0.57.0`) with Flux Operator CRDs and `serverOnly: true`, preserving the existing CLI-managed Flux controllers.
-- [x] Install Dex (`0.24.1` / Dex `2.44.0`) with persistent SQLite state, Google connector, separate Flux/Headlamp/stats clients, secure out-of-band Secrets, and a restricted identity namespace/network boundary.
-- [x] Expose `flux.belacca.com` and `dex.belacca.com` through Traefik with Cloudflare DNS-01 ACME, add DNS-only Cloudflare A records, and verify Let's Encrypt SANs.
-- [x] Move Headlamp and the analytics dashboard edge authentication from direct Google OAuth to Dex/Google OIDC; keep the Headlamp BasicAuth route only as rollback and preserve public GoatCounter `/count`, `/count.js`, and `/status` paths.
-- [x] Enable Headlamp's supported identity-aware proxy mode behind OAuth2 Proxy and use the mounted in-cluster ServiceAccount for the intentionally shared administrative backend; retain the explicit warning that this is not per-user Kubernetes OIDC/RBAC.
-- [x] Bind `belakkuz@gmail.com` to the Flux Web UI admin role, restrict both OAuth2 Proxy allowlists to that email, align the existing GoatCounter superuser email without changing its password, and document the Headlamp fixed-ServiceAccount admin boundary plus GoatCounter's separate application login.
-- [x] Verify GitOps publication, DNS, Secrets, Kustomizations, HelmReleases, workloads, TLS, OIDC discovery, OAuth redirect targets, RBAC, public analytics paths, and existing portfolio/Pong health. (Interactive browser completion of Google sign-in remains a manual operator check.)
+## Execution plan
 
-## Delegation plan
+### Phase 0 — status and ownership hygiene
 
-Delegated work must be isolated by repository/files and launched in tmux with:
+- [x] Replace the obsolete broad SRE workstream plan with this migration plan.
+- [x] Record the exact native cluster, public edge, DNS, Git, and workload state.
+- [x] Review the local native-edge diff and run repository checks.
+- [x] Publish the reviewed native-edge and route-less application GitOps
+      changes; local rendering, safety scans, and live edge validation passed.
+- [x] Resume native Flux against the published revision and confirm the edge,
+      source, application, and protected-secret inventories reconcile without
+      recreating removed credential objects.
+- [x] Remove only the audited obsolete Pong child Flux tree and superseded
+      historical handoff; retain active rollback, ACME, PVC, CI, restore, and
+      k3d host safeguards.
 
-```bash
-pi --provider openrouter --model openai/gpt-5.6-luna '<task>'
+### Phase 1 — API and host failure-domain readiness
+
+- [x] Verify three-node etcd membership and node readiness.
+- [x] Verify native API DNS records and certificate SANs.
+- [ ] Select and provision the recommended single Contabo floating VIP with
+      fenced active/passive failover for `:6443`, or validate a managed L4/TCP
+      load-balancer alternative.
+- [ ] Put the stable endpoint in infrastructure inventory and kubeconfig.
+- [ ] Test API access while stopping or isolating one server, without touching
+      the old production application edge.
+- [ ] Decide whether to enable SSH hardening on `.73` before cutover and define
+      a tested recovery path.
+
+### Phase 2 — Native edge, TLS, and routing
+
+- [x] Validate pinned Traefik chart and immutable image.
+- [x] Validate direct native HTTP/HTTPS listeners on both new nodes.
+- [x] Publish and adopt the Traefik HelmRelease through Flux. GitOps commit
+      `312bb1d` contains the reviewed HelmRepository/HelmRelease, and the live
+      release is Flux-owned and Ready.
+- [ ] Choose the ACME/certificate state architecture for two edge nodes.
+      Current recommendation: cert-manager DNS-01 plus namespace-local TLS
+      Secrets; do not use the old shared RWO `acme.json` design.
+- [ ] Stage TLS certificates and DNS-01 renewal without changing public records.
+- [ ] Deploy native route CRs/Ingresses for portfolio, Pong, analytics, Dex,
+      Headlamp, and Flux UI.
+- [ ] Test routes with direct node IPs and temporary host headers.
+
+### Phase 3 — Workload and data migration
+
+- [x] Create the native Pong/portfolio namespaces and route-less Flux child
+      Kustomizations after the native context, Longhorn health, and publication
+      gates passed.
+- [x] Deploy private route-less portfolio and Pong gateway/static/API staging
+      workloads; Dex, Headlamp, analytics, and Flux UI remain deferred until
+      their own secrets, routes, and state contracts are reviewed.
+- [ ] Create Longhorn-backed PVCs with explicit reclaim and single-writer
+      policies.
+- [ ] Produce verified copies of existing Pong, GoatCounter, Dex, and required
+      ACME/application state outside the old cluster. This remains explicitly
+      NO-GO until quiescence and integrity/restore evidence exist.
+- [ ] Restore and checksum/validate SQLite data in native PVCs.
+- [ ] Run application startup, readiness, authentication, collector, and
+      WebSocket tests against native nodes.
+
+### Phase 4 — Cutover and rollback validation
+
+- [ ] Validate all public hostnames, redirects, TLS SANs, WebSockets, analytics
+      paths, dashboard access, and Flux reconciliation on native edge.
+- [ ] Establish a monitoring window with old k3d and native paths observable.
+- [ ] Change only the approved load balancer/DNS records.
+- [ ] Verify application health and user journeys repeatedly after cutover.
+- [ ] Exercise one-server failure and confirm etcd/API, edge, replicated storage,
+      and application recovery expectations.
+- [ ] Keep the old k3d cluster and protected PVCs intact until the rollback window
+      closes and the data-retention decision is reviewed.
+
+### Phase 5 — Operational completion
+
+- [ ] Configure encrypted off-cluster backups with retention, RPO/RTO, and
+      restore alerts.
+- [ ] Complete a real isolated restore rehearsal using a copied database.
+- [ ] Complete authenticated dashboard and analytics synthetic runners.
+- [ ] Configure Flux notification destination credentials out of band.
+- [x] Update infrastructure, GitOps, Pong, portfolio, and workspace
+      documentation with the active-public/native-staging vocabulary.
+- [ ] Update service inventory and final migration evidence after workloads and
+      data are actually migrated.
+- [ ] Only then decide whether the old k3d cluster can be retired.
+
+## Current working tree and runtime references
+
+### Runtime references
+
+```text
+Native kubeconfig: /root/.kube/belacca-native
+Native API DNS:    k3s-api.belacca.com:6443
+Native cluster:    three Ready embedded-etcd servers
+Old production:    k3d-pong on .73, still serving public traffic
 ```
 
-Current intended parallel tracks:
+### Repository state
 
-1. Pong telemetry, lifecycle metrics, correlation IDs, and failure tests (`pong-telemetry`).
-2. Resource-conscious Prometheus-compatible observability, SLO rules, dashboards, and synthetic contracts (`observability-slos`).
-3. Safe isolated restore rehearsal, backup contract, and game-day runbooks (`recovery-gameday`).
-4. Read-only incident evidence bundle, bounded AI-assistance contract, and truthful external status surface (`incident-status`).
+- `/root/sources/belacca-infrastructure`: published safeguards/documentation
+  commit `27cdb5c`.
+- `/root/sources/belacca-platform`: parent documentation and child gitlink
+  updates are pending this final publication.
+- `/root/sources/belacca-platform/belacca-gitops`: published native root,
+  edge, source, application, and credential-boundary state at `312bb1d`; Flux
+  reconciliation is Ready.
+- `cloudnativepong`: published native-staging and cleanup state at `958a0ad`.
+- `francesco-belacca-site`: published documentation and generated deployment
+  state at `15808ea`.
+- No passwords, tokens, private keys, plaintext Secret values, database files,
+  or generated private telemetry belong in this plan.
 
-Completed first-wave tracks remain documented in the verification log; stop completed agents before starting overlapping edits.
+## Completion criteria
 
-Agents must not stage or commit. They must report changed paths, tests run, unresolved prerequisites, and documentation updates. The coordinator owns integration, cross-repository validation, plan updates, and final verification.
+The migration is complete only when all of the following are true:
 
-## Verification gates
-
-### Local gates
-
-- [x] `make site-test`
-- [x] `make pong-test`
-- [x] `make manifests`
-- [x] `make validate`
-- [x] nested repository `git diff --check`
-- [x] YAML/Kustomize rendering and policy validation
-- [x] tests for every new security/reliability behavior
-
-### Runtime gates (only when cluster access is safe and available)
-
-- [x] `kubectl config current-context` is `k3d-pong` before diagnostics. (Final read-only check confirmed it.)
-- [x] no destructive cluster/PVC operation. (No cluster deletion/recreation or protected PVC deletion/mutation was performed; only the reviewed SSO resources, DNS records, out-of-band Secrets, and GoatCounter admin identity were changed.)
-- [x] Flux sources/Kustomizations/HelmReleases are Ready. (Final read-only check confirmed `dex`, `flux-web`, `analytics`, `belacca-routing`, existing application Kustomizations, and all relevant HelmReleases/workloads Ready.)
-- [x] public health, redirect, certificate, and synthetic user journeys pass. (Portfolio/Pong health, Dex discovery, Flux Web UI, dashboard Dex redirect, stats dashboard Dex redirect, public `/status`, public `/count.js`, valid TLS SANs, DNS propagation, and existing service checks passed; the local two-player synthetic also passed. Interactive Google sign-in remains manual.)
-- [ ] backup restore passes in an isolated environment. (Self-test and dry-run pass; real disposable k3d rehearsal requires Docker/k3d/images and an operator-approved copied database.)
-- [x] no credentials or private data appear in logs, artifacts, metrics, or Git. (Safety scans passed after removing generated caches; only intentional `${{ secrets.GITHUB_TOKEN }}` references and interactive prompt documentation remain.)
-
-## Verification log
-
-- 2026-08-05: Current public checks returned HTTP 200 for portfolio health/homepage, Pong homepage, and GoatCounter status. One portfolio health request was slow (~5s), so repeated external measurement is required before drawing conclusions.
-- 2026-08-05: Confirmed current platform already has Flux, immutable SHA image tags, CI, probes, HPA, protected PVCs, OAuth2 Headlamp, security headers, and runbooks.
-- 2026-08-05: Initial gaps were confirmed and addressed where locally verifiable: application metrics/SLO groundwork, Flux Alert/Provider resources, Pong abuse boundaries, origin policy, dynamic Pod hardening, and DNS-01 documentation are now implemented or staged; external backup/status/runtime enforcement remain open.
-- 2026-08-05: Portfolio agent added `/reliability.html`, safe short build metadata, security/header/cache tests, updated site documentation/discovery assets, and verified npm/static checks plus Podman container smoke test.
-- 2026-08-05: Delivery agent added dependency-light synthetic and SQLite backup/restore tooling; local two-player Pong synthetic and SQLite round-trip self-test passed. Supply-chain workflow/hooks are present but require final review and runtime registry/OIDC verification.
-- 2026-08-05: GitOps agent added service catalog/validation, reliability/notification documentation, Flux notification resources, scoped NetworkPolicies, and PDBs. All nested Kustomizations rendered, catalog validation passed, whitespace/credential scans passed, and server-side dry-runs passed; runtime CNI/Secret prerequisites remain.
-- 2026-08-05: Pong hardening batch verified: Go unit/race/vet pass; exact origin policy, bounded JSON/status handling, admission limits, server timeouts, aggregate metrics, local HTTP/origin smoke, two-player synthetic, and hardened room templates all pass.
-- 2026-08-05: Pong telemetry batch stabilized: room/SQLite/HTTP/WebSocket/admission/callback metrics, opaque request IDs, injected orchestration failures, bounded aggregate load smoke, and documentation updates pass unit/race/vet plus eight repeated full-suite runs.
-- 2026-08-05: Staged observability batch independently verified: plain Prometheus v3.13.2 digest-pinned manifests, private network policy, bounded retention/sample limits, static Pong/Flux scrape config, nine proposed rules, synthetic/dashboard JSON contracts, and official promtool config/rule validation pass. No observability resources have been reconciled to the live cluster.
-- 2026-08-05: Optional OpenTelemetry tracing follow-up verified: Go OTel SDK/exporter `v1.45.0`, no-endpoint no-op behavior, W3C propagation, bounded route normalization, HTTP/callback/WebSocket integration, Go unit/race/vet, build, and local two-player synthetic all pass. Collector deployment remains an external/runtime prerequisite.
-- 2026-08-05: OTel follow-up committed in `cloudnativepong` as `6544842`; parent pointer was updated in the subsequent parent commit.
-- 2026-08-05: Immutable release follow-up committed in `cloudnativepong` as `22929c7`: release metadata validator, digest-only promotion helper, CI contract checks, and docs pass Go/race/vet plus mutable-reference rejection.
-- 2026-08-06: Replaced legacy image-signing hooks with GitHub Artifact Attestations: both image publishers use `actions/attest@v4` with registry-pushed SLSA provenance, repository-scoped `gh attestation verify` helpers are present, and Pong digest promotion has an explicit `--verify-attestations` gate. Live registry attestation execution remains a publish-time gate.
-- 2026-08-06: Published Pong child commits through generated deployment commit `009d134` and site child commits through generated deployment commit `aa3f8a8`; native attestation, supply-chain, child test/build, and parent validation workflows passed. The final Pong K8s E2E passed after propagating the local origin policy into dynamically generated room Pods.
-- 2026-08-06: Reworked the Pong synthetic check so the scheduled workflow defaults to `https://pong.belacca.com`, fails closed instead of green-skipping an unset target, validates homepage/health/room contract/two-player playing state, and verifies room cleanup. Fixture tests, the full child suite, and one live public journey passed; other service probes remain external prerequisites.
-- 2026-08-05: Final coordinator runtime read-only check confirmed context `k3d-pong`, three Ready nodes, Flux application sources/Kustomizations Ready, existing workloads Running, and no `observability` workload deployed because changes remain uncommitted/unpublished.
-- 2026-08-05: Flux ownership migration safety gates passed: the checked-in root render contains every live root-inventory object, application/routing child inventories are disjoint and Ready, public route checks passed, and Pong/analytics/ACME stateful resources are present with prune protection (Pong PV reclaim policy `Retain`). Root `prune: true` is now published in the GitOps tree; it still requires live reconciliation.
-- 2026-08-05: Incident/status batch independently verified: 4 Python evidence tests, 16 site tests, Python/Node/shell syntax checks, safe-failure collection, redaction tests, and no-store status packaging pass.
-- 2026-08-06: Implemented and published the separate `macel94/belacca-status` repository design: hourly GitHub-hosted external checks, sanitized v2 artifacts and history, Pong WebSocket journey reuse, freshness/unknown fallback, and explicit single-VM boundary. The initial child commit and parent submodule pin are published; hourly observation commits advance independently.
-- 2026-08-05: Recovery/game-day batch added an opt-in isolated `pong-restore-*` rehearsal, backup/object-storage/encryption contract, and bounded failure drills; backup/rehearsal self-tests and dry-run safety checks pass. Real k3d rehearsal remains runtime/dependency dependent.
-- 2026-08-05: Published the previously local `cloudnativepong` commits through `22929c7` and `francesco-belacca-site` commit `c76fca5`, which fixed GitHub checkout/Dependabot failures for the parent submodule pins. Reruns of parent validation runs `31049129983` and `31049164683` passed; the original Dependabot service runs cannot be rerun by GitHub and remain historical failures.
-
-## Verification log (2026-08-06 SSO/Flux dashboard rollout)
-
-- Added and published the shared Dex/Google SSO and Flux Web UI implementation in child GitOps commit `1b83ead`, with subsequent published runtime fixes `442843a` (Dex `/tmp` emptyDir), `b35d21e` (allow identity routes before analytics readiness), `3df55bb` (public analytics route precedence), and `fefa8df` (path-scoped Dex issuer reusing the existing Google callback). The parent published the final child pointer in `8527725`; all remote refs were verified.
-- Provisioned only out-of-band Secret data: `dex-google-oauth`, `dex-client-secrets`, `flux-web-client`, `headlamp-dex-oauth`, and `analytics-dex-oauth`; values were never written to Git or printed. The existing GoatCounter admin email was changed in place to `belakkuz@gmail.com` while its password was preserved.
-- Added Cloudflare DNS-only A records for `flux.belacca.com` and `dex.belacca.com` pointing to `169.58.97.73`; Cloudflare zone/DNS API operations and Google/Cloudflare public DNS resolution passed.
-- Reconciled the live `k3d-pong` cluster without deleting/recreating the cluster or protected PVCs. Final Flux Kustomizations (`analytics`, `belacca-routing`, `dex`, `flux-system`, `flux-web`, `observability`, `pong`, and `portfolio`) reported `Ready=True`; Dex, Flux Web UI, Headlamp OAuth2 Proxy, analytics OAuth2 Proxy, GoatCounter, and existing workloads were Ready.
-- Final endpoint checks passed: path-scoped Dex OIDC discovery at `https://dashboard.belacca.com/oauth2/.well-known/openid-configuration` `200`, `dex.belacca.com` alias redirect `301`, Flux Web UI `200`, dashboard Headlamp redirect to the Dex path with `/headlamp-auth/callback`, stats redirect to the Dex path, public stats `/status` `200`, public `/count.js` `200`, valid `/count` reached GoatCounter's expected validation response, portfolio/Pong health `200`, and valid Let's Encrypt certificates for Dex, Flux, stats, dashboard, and the path-scoped Dashboard route.
-- RBAC checks passed: Headlamp's fixed backend ServiceAccount has the intended admin access behind the exact Dex/OAuth2 Proxy allowlist, `belakkuz@gmail.com` has `flux-web-admin` and Flux action verbs, and no credentials appeared in Git or rendered manifests. The Google connector is configured to reuse the already-authorized callback `https://dashboard.belacca.com/oauth2/callback`; the path-scoped issuer bridge avoids requiring new Google Cloud Console credentials.
-- Known limitations are documented in `belacca-gitops/docs/SSO.md`: GoatCounter does not consume OAuth2 Proxy identity headers, so Dex gates its public hostname and the application account is aligned to `belakkuz@gmail.com`, but GoatCounter's own dashboard session cookie remains an application-level login. The final interactive browser Google login and this second GoatCounter application-session step require an operator account/session and were not automated with `curl`; the non-interactive Google authorization check confirmed the existing callback is accepted.
-- 2026-08-06: Corrected the Headlamp edge-to-backend auth boundary in GitOps commit `d2bf0d0` by enabling the official `proxy-auth` integration and the mounted in-cluster ServiceAccount backend. Documentation now states that dashboard access is intentionally shared-admin, while GoatCounter remains a deliberate two-step login because its upstream self-hosted release has no supported OIDC/header bridge. GitOps validation passed, Flux applied `d2bf0d0`, both Headlamp HelmReleases became Ready, and post-reconcile checks confirmed the required flags, trusted-header `/me` response, shared backend API access, public OAuth redirects, and unchanged analytics collector paths. Interactive Google/GoatCounter browser sessions remain operator-owned checks.
-
-## Final coordinator state
-
-- All delegated agents are stopped; no tmux work remains active.
-- Parent and nested repositories contain the reviewed implementation and documentation changes for this rollout. The child repositories are published independently, then the parent pins their resulting commits. No secrets, generated status artifacts, or unrelated worktree files are included.
-- Local implementation is complete for Pong hardening/telemetry, Caddy/Distroless runtime migration, opt-in WebTransport with WebSocket compatibility, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
-- The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and its existing `prune: false` ownership decision.
-- The public site status page now consumes fresh v2 artifacts from the separate `macel94/belacca-status` repository; its checked-in fallback remains unknown/not configured until the first external GitHub Actions observation is published.
-- Runtime gates remain open for public UDP/WebTransport ingress and TLS configuration, external notification credentials, off-cluster backup storage/KMS, real isolated restore, authenticated dashboard synthetic coverage, GitHub registry attestation enforcement by digest, and measured SLOs/burn-rate paging. The status repository's first publication and parent pin are complete; future hourly observations intentionally do not require parent pointer updates.
-
-## Verification log (2026-08-07 Caddy/Distroless/WebTransport rollout)
-
-- Migrated Cloud Native Pong gateway and static service from NGINX to pinned Caddy `2.10.2-alpine`; migrated the portfolio static image to the same Caddy base while preserving health, security headers, cache policy, and same-origin GoatCounter proxy behavior.
-- Migrated Pong API and room images from `scratch` to pinned Distroless `static-debian13:nonroot`, preserving CA certificates/timezone data and Kubernetes nonroot security contexts.
-- Added native WebTransport support with `webtransport-go v0.12.0` and `quic-go v0.61.0`. Browser negotiation prefers WebTransport only when `/api/capabilities` advertises a configured public URL; WebSocket remains the tested default fallback.
-- Added an opt-in UDP ClusterIP service and documented the remaining platform prerequisites: public UDP load balancing, matching TLS material, NetworkPolicy, and ingress validation. The current Traefik HTTP route does not expose WebTransport publicly.
-- Verification passed: Go unit/race/vet/build, Chromium 14/14, portfolio tests 16/16, Caddy validation, Kustomize/client dry-runs, final image builds, and live container health/static smoke checks. No cluster rollout or image publication is claimed by these local checks.
-
-## Deferred/external prerequisites
-
-These require operator-owned infrastructure or secrets and must not be faked in Git:
-
-- the child repository commits and parent submodule pointers are now published; future child changes still require the same publish-before-pin order;
-- external synthetic runners for portfolio/analytics/dashboard, the status publisher, and any alternate-target repository variables;
-- notification destination tokens and the `platform-notification-webhook` Secret;
-- object-storage credentials, bucket policy, retention/WORM, and encryption/KMS keys;
-- rotation and operator-managed backup of the provisioned Google/Dex/OAuth2 Proxy, GoatCounter admin, and Cloudflare DNS-01 Secrets; their values remain out of band;
-- GitHub registry attestation publication and policy enforcement by digest;
-- real disposable-k3d restore rehearsal prerequisites (Docker/k3d, local images, copied SQLite artifact);
-- interactive Google browser sign-in/Google Cloud callback confirmation, GoatCounter's application-session login after the Dex edge gate, measured SLO data, alert destination, incident paging policy, and public status publication;
-- live reconciliation of the root-pruning change and any irreversible pruning or stateful-resource deletion.
+1. Three-server native k3s/etcd survives a one-server failure test.
+2. A stable health-aware API endpoint is selected and tested.
+3. Native Traefik/TLS/routing is GitOps-owned and serves all required hosts.
+4. Pong, GoatCounter, Dex, and other stateful data are backed up and restored
+   with verified integrity on Longhorn-backed PVCs.
+5. SQLite workloads remain single-writer unless their architecture is changed.
+6. Public DNS/traffic cutover passes repeated application and authentication
+   journeys with a documented rollback path.
+7. Encrypted off-cluster backups and an isolated restore rehearsal pass.
+8. The old k3d rollback environment is retained until the final approval gate.
