@@ -141,10 +141,10 @@ Development images and production images have different purposes:
 
 ```text
  development image: shell, Go toolchain, watcher, source sync
- production image:  minimal scratch image, immutable, signed, promoted by GitOps
+ production image:  minimal distroless image, immutable, signed, promoted by GitOps
 ```
 
-Do not add a shell or compiler to the production `scratch` images merely to
+Do not add a shell or compiler to the production distroless images merely to
 make development convenient.
 
 ### Dynamic room Pods

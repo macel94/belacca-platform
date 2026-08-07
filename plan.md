@@ -2,7 +2,7 @@
 
 > Resumable execution plan for `belacca-platform`.
 >
-> Last updated: 2026-08-06
+> Last updated: 2026-08-07
 > Coordinator: primary pi session
 > Agent model policy: all delegated agents must use `openai/gpt-5.6-luna`.
 > Git policy: do not stage or commit automatically; review nested repositories and parent gitlinks separately.
@@ -57,7 +57,7 @@ user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested 
 - [x] Harden dynamic room Pods: non-root, no token, no privilege escalation, dropped capabilities, read-only root, and RuntimeDefault seccomp in generated and checked-in templates. (Digest pinning and full network policy remain open.)
 - [x] Add room lifecycle and failure-injection tests: restart, missing callback, orphan cleanup, quota/admission rejection, Pod failure, and cleanup retry behavior. (Dependency-injected orchestration tests pass.)
 - [x] Add load/smoke tooling for room creation, join, WebSockets, cleanup latency, and resource ceilings. (Bounded aggregate-only harness plus local HTTP/origin and two-player synthetic passed; sustained public load remains external.)
-- [x] Reconcile Pong operational documentation with each verified implementation. (README, DEPLOYMENT, and HANDOFF document telemetry, admission, origins, provenance, synthetic, recovery, and current limitations.)
+- [x] Reconcile Pong operational documentation with each verified implementation. (README, DEPLOYMENT, and HANDOFF document telemetry, admission, origins, provenance, synthetic, recovery, Caddy/Distroless runtime choices, WebSocket compatibility, optional WebTransport, and current limitations.)
 
 ### C. Observability and SLO enforcement (`belacca-gitops/` plus applications)
 
@@ -98,7 +98,7 @@ user journey -> SLI -> SLO -> error budget/alert -> incident evidence -> tested 
 - [x] Add a status surface backed by externally generated, sanitized status data; do not make the cluster the only source of its own status page. (Unknown-by-default `/status.html` + schema/contract + no-store artifact are shipped; external publisher remains a prerequisite.)
 - [x] Add version/build/deployment metadata safely and verify cache behavior. (Short build SHA substitution and cache/header checks verified with Podman.)
 - [x] Add automated accessibility, security-header, performance-budget, and link/redirect tests. (Static semantic/security/link checks and npm suite pass; external performance budget remains follow-up.)
-- [x] Reconcile site README and public copy with actual deployed capabilities after verification. (README, privacy, discovery assets, sitemap, and page copy updated; runtime deployment verification remains pending.)
+- [x] Reconcile site README and public copy with actual deployed capabilities after verification. (README, reliability page, discovery assets, sitemap, Caddy runtime, and portfolio/Pong transport copy are harmonized; external production observation remains separate.)
 
 ### G. Bounded AI-assisted operations
 
@@ -196,11 +196,19 @@ Agents must not stage or commit. They must report changed paths, tests run, unre
 ## Final coordinator state
 
 - All delegated agents are stopped; no tmux work remains active.
-- Parent and nested repositories contain published commits for this rollout and the earlier implementation work. The parent is being updated to pin GitOps child commit `d2bf0d0`. Pre-existing unrelated changes remain intentionally unstaged in `belacca-gitops` (Pong catalog measurement, observability synthetic/docs) and `cloudnativepong` (child worktree changes and the empty `oom` file); they were not included in this rollout.
-- Local implementation is complete for Pong hardening/telemetry, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
+- Parent and nested repositories contain the reviewed implementation and documentation changes for this rollout. The child repositories are published independently, then the parent pins their resulting commits. No secrets, generated status artifacts, or unrelated worktree files are included.
+- Local implementation is complete for Pong hardening/telemetry, Caddy/Distroless runtime migration, opt-in WebTransport with WebSocket compatibility, site reliability/status UX, incident evidence, GitOps catalog/policies/notifications, staged Prometheus observability, recovery/game-day contracts, and supply-chain/release hooks.
 - The staged observability child is intentionally not live: reconcile it only after reviewing host resource budget, CNI policy behavior, Prometheus target health, and its existing `prune: false` ownership decision.
 - The public site status page now consumes fresh v2 artifacts from the separate `macel94/belacca-status` repository; its checked-in fallback remains unknown/not configured until the first external GitHub Actions observation is published.
-- Runtime gates remain open for external notification credentials, off-cluster backup storage/KMS, real isolated restore, authenticated dashboard synthetic coverage, GitHub registry attestation enforcement by digest, and measured SLOs/burn-rate paging. The status repository's first publication and parent pin are complete; future hourly observations intentionally do not require parent pointer updates.
+- Runtime gates remain open for public UDP/WebTransport ingress and TLS configuration, external notification credentials, off-cluster backup storage/KMS, real isolated restore, authenticated dashboard synthetic coverage, GitHub registry attestation enforcement by digest, and measured SLOs/burn-rate paging. The status repository's first publication and parent pin are complete; future hourly observations intentionally do not require parent pointer updates.
+
+## Verification log (2026-08-07 Caddy/Distroless/WebTransport rollout)
+
+- Migrated Cloud Native Pong gateway and static service from NGINX to pinned Caddy `2.10.2-alpine`; migrated the portfolio static image to the same Caddy base while preserving health, security headers, cache policy, and same-origin GoatCounter proxy behavior.
+- Migrated Pong API and room images from `scratch` to pinned Distroless `static-debian13:nonroot`, preserving CA certificates/timezone data and Kubernetes nonroot security contexts.
+- Added native WebTransport support with `webtransport-go v0.12.0` and `quic-go v0.61.0`. Browser negotiation prefers WebTransport only when `/api/capabilities` advertises a configured public URL; WebSocket remains the tested default fallback.
+- Added an opt-in UDP ClusterIP service and documented the remaining platform prerequisites: public UDP load balancing, matching TLS material, NetworkPolicy, and ingress validation. The current Traefik HTTP route does not expose WebTransport publicly.
+- Verification passed: Go unit/race/vet/build, Chromium 14/14, portfolio tests 16/16, Caddy validation, Kustomize/client dry-runs, final image builds, and live container health/static smoke checks. No cluster rollout or image publication is claimed by these local checks.
 
 ## Deferred/external prerequisites
 
