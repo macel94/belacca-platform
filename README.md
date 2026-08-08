@@ -102,7 +102,7 @@ It never queries Secret contents, mutates the cluster, or approves an action.
 See [`docs/incident-evidence.md`](docs/incident-evidence.md) for the AI boundary:
 read-only, evidence-linked, human approval, and GitOps-only production changes.
 
-The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the single VM. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
+The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
 ## Supported platform sites
 

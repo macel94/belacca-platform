@@ -30,20 +30,16 @@ immutable, and Git-backed.
 The workspace currently has:
 
 - `cloudnativepong` local mode for the fastest application feedback;
-- an **active-public** single-host cluster at context `k3d-pong`, still serving
-  public application traffic and retained as the rollback path;
-- a **native-staging** three-server k3s migration target with healthy control
-  plane, Flux, SOPS/age, Longhorn, cert-manager controller/CRDs, Flux-managed
-  Traefik, and private route-less Pong/portfolio staging workloads;
-- no public application DNS, ingress ownership, production data, or protected
-  production PVC cutover to native staging;
+- **native production** at context `belacca-native`, serving public traffic
+  through Traefik on `.41` and `.42`, with Flux, SOPS/age, Longhorn, cert-manager,
+  Pong, portfolio, analytics, Dex, Headlamp, and Flux Web;
+- direct Cloudflare DNS round-robin across `.41` and `.42`, without health-aware
+  withdrawal; the former `k3d-pong` runtime is retired;
 - GitHub Actions that build and test images on hosted runners;
 - Flux polling the application sources and reconciling production manifests;
 - no separate persistent `pong-dev` cluster or service-interception workflow yet.
 
-The two cluster roles must not be conflated. Neither active-public `k3d-pong`
-nor native-staging k3s is a development sandbox. Native staging is reserved for
-reviewed migration validation and cutover rehearsal; do not use it for repeated
+Native production is not a development sandbox. Do not use it for repeated
 experiments, temporary image patches, ad hoc deployments, or destructive
 lifecycle operations. Until a separate development plane exists, use local mode
 for ordinary changes and an explicitly disposable, isolated environment for
@@ -112,10 +108,9 @@ These checks are validation gates, not the default command after every save.
 
 Some changes genuinely need Kubernetes: Pod and Service orchestration, RBAC,
 NetworkPolicies, room callbacks, scheduling, DNS behavior, or the gateway path.
-Those changes should use a separate, warm development plane rather than either
-the active-public cluster or the native-staging migration target, and rather
-than a newly-created cluster for every edit. Native staging is not a substitute
-for `pong-dev`.
+Those changes should use a separate, warm development plane rather than native
+production, and rather than a newly-created cluster for every edit. Native
+production is not a substitute for `pong-dev`.
 
 ### Preferred target: local process interception
 
@@ -185,8 +180,7 @@ boundaries:
 - separate local registry and development image names;
 - development origins and host ports;
 - no production Flux ownership;
-- no access to `k3d-pong` resources, native-staging resources, or production
-  secrets;
+- no access to native-production resources or production secrets;
 - scripts that fail closed unless the selected context is `k3d-pong-dev` or an
   explicitly generated disposable context;
 - an easy reset path that cannot delete production resources.
