@@ -60,11 +60,11 @@ The migration is a blue/green build with two deliberately separate planes:
 - **active-public:** the existing single-host `k3d-pong` cluster on `.73` still
   owns public application traffic and remains the production rollback path;
 - **native-staging:** the validated three-server native k3s cluster is the
-  migration target. Its control plane, Flux, SOPS/age, Longhorn, cert-manager
-  controller/CRDs, Flux-managed Traefik, and private route-less Pong/portfolio
-  staging workloads are healthy,
-  but no public application DNS, ingress ownership, production data, or
-  protected production PVC has been cut over.
+  migration target. Its control plane, Flux, SOPS/age, Longhorn, cert-manager,
+  Flux-managed Traefik, TLS, native routes, and staged Pong/portfolio,
+  analytics, Dex, Headlamp, and Flux Web workloads are healthy. Direct SNI
+  probes succeed on `.41` and `.42`; public DNS, production data, and protected
+  production PVC ownership remain on `.73`.
 
 The execution state and remaining gates are tracked in [`plan.md`](plan.md).
 The host-level companion plan is in the sibling

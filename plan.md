@@ -1,22 +1,24 @@
 # Belacca native k3s migration — status and execution plan
 
-**Status date:** 2026-08-07 19:12 CEST
+**Status date:** 2026-08-08 13:20 CEST
 **Scope:** migrate the live single-host `k3d-pong` platform on `.73` to a
 three-server native k3s HA cluster without deleting or casually recreating
 workloads, PVCs, or the current production edge.
 
 ## Executive status
 
-The native platform foundation is healthy and the migration is proceeding as a
-staged blue/green build. The three-server native k3s cluster, embedded etcd,
-Flux, SOPS/age, Longhorn, cert-manager controller/CRDs, and a stateless native
-Traefik edge have all been validated. The original k3d cluster on `.73` is still the active production
-cluster and still owns public application traffic on ports 80/443.
+The native platform is healthy and the migration is proceeding as a staged
+blue/green build. The three-server native k3s cluster, embedded etcd, Flux,
+SOPS/age, Longhorn, cert-manager, native Traefik, TLS, routed Pong/portfolio,
+Dex, Headlamp, Flux Web, and analytics staging have all been validated directly
+against `.41` and `.42`. The original k3d cluster on `.73` is still the active
+production cluster and still owns public DNS and application traffic on ports
+80/443.
 
-**No public application DNS, ingress ownership, production data, or protected
-production PVC has been cut over.** Private route-less Pong and portfolio
-staging workloads are live on native ClusterIP Services; existing public
-services remain available and returned HTTP 200 during the native work.
+**No public application DNS, production ingress ownership, production data, or
+protected production PVC has been cut over.** Native services remain ClusterIP
+behind the two native host-network Traefik edges; direct SNI probes succeed on
+both nodes, while public DNS remains pointed at `.73`.
 
 Overall state: **healthy staging foundation; migration not yet complete.**
 
@@ -90,11 +92,11 @@ Overall state: **healthy staging foundation; migration not yet complete.**
 
 - Bootstrapped Flux `v2.9.3` into the native `belacca-production` path.
 - Native Flux source and root Kustomization are `Ready=True` at revision
-  `83c663b`. The native edge, cert-manager, and both route-less application
-  Kustomizations are Flux-owned and Ready: Pong is at `958a0ad`, and portfolio
-  is at generated deployment revision `15808ea`. Their private staging
-  workloads are live; no public route or production-state ownership has been
-  introduced.
+  `c083165`. Native edge, cert-manager, TLS, routing, Pong, portfolio, Dex,
+  Headlamp, Flux Web, and analytics Kustomizations are Flux-owned and Ready.
+  Pong is at `b9519b1`, and portfolio is at deployment revision `15808ea`.
+  All native routes are tested directly with SNI on `.41` and `.42`; no public
+  DNS or production-state ownership has been introduced.
 - Removed old-production OAuth, Cloudflare, analytics-admin, and proxy Secret
   manifests from native staging. Native Git now contains namespace declarations
   only under `secrets/`; the out-of-band `flux-system/sops-age` decryption
@@ -129,8 +131,9 @@ Overall state: **healthy staging foundation; migration not yet complete.**
 
 ### 6. Native Traefik edge staging
 
-A native edge has been staged on the two new servers only. It is intentionally
-not serving application routes yet.
+A native edge has been staged on the two new servers only. It serves the
+native staging routes for direct SNI validation; `.73` remains excluded so the
+old k3d process remains the public edge.
 
 - Validated the official Traefik chart `41.2.0` / Traefik `v3.7.10`.
 - The staged release is a DaemonSet constrained to:
@@ -140,10 +143,12 @@ not serving application routes yet.
   old k3d process remains the only public edge on the existing host.
 - The native release has no ServiceLB/LoadBalancer Service, no ACME PVC, and no
   application route yet.
-- The container runs non-root with RuntimeDefault seccomp, read-only root
-  filesystem, privilege escalation disabled, all capabilities dropped except
-  `NET_BIND_SERVICE`, and an immutable verified Traefik image index digest:
+- The container uses RuntimeDefault seccomp, a read-only root filesystem,
+  privilege escalation disabled, UID 0 with only the low-port bind capability
+  retained because this host-network runtime rejected non-root binding, and an
+  immutable verified Traefik image index digest:
   `sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac`.
+  This exception is limited to the native Traefik DaemonSet on `.41`/`.42`.
 - The DaemonSet replacement strategy was corrected to avoid host-port collision:
   `maxUnavailable: 1`, `maxSurge: 0`.
 - Current native edge state:
@@ -161,18 +166,19 @@ not serving application routes yet.
   4. The corrected chart now reconciles successfully and both pods use the
      digest-pinned image.
 
-The edge manifests, cert-manager controller boundary, and native Flux health
-checks are published in GitOps commit `83c663b` under:
+The edge manifests, cert-manager boundary, native TLS, routing, application
+policies, and Flux health checks are published through GitOps revision `c083165`
+under:
 
 ```text
 belacca-gitops/clusters/belacca-production/edge/
 belacca-gitops/clusters/belacca-production/kustomization.yaml
 ```
 
-Flux owns the edge, cert-manager controller, and route-less application
-Kustomizations. Native Traefik, cert-manager, Pong, and portfolio staging are
-Ready; all application Services remain private ClusterIP resources with no
-public route, issued application certificate, or production-state ownership.
+Flux owns the edge, cert-manager, TLS, routing, application, and policy
+Kustomizations. Native Traefik, cert-manager, Pong, portfolio, Dex, Headlamp,
+Flux Web, and analytics staging are Ready; all application Services remain
+private ClusterIP resources, and no production-state ownership has moved.
 
 ### 7. Production safety checks
 
@@ -240,9 +246,9 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 | Item | Current status | Required decision/action |
 |---|---|---|
 | Stable k3s API endpoint | DNS name resolves to three A records; kubeconfig still uses `.41` | Confirm provider floating IP or TCP LB, then switch and failure-test the endpoint |
-| Native public ingress | Direct listeners and Flux-owned route-less edge work on `.41`/`.42`; no public routes | Choose TLS/ACME, stage reviewed routes, and validate before DNS cutover |
-| ACME state | cert-manager controller/CRDs are Ready; no Issuer, Certificate, DNS solver, credential, or certificate state exists | Add only a reviewed Cloudflare DNS-01 Secret/Issuer/Certificate contract; never multi-mount old `acme.json` |
-| Native applications | Route-less Pong/portfolio Kustomizations are Ready; private workloads and Longhorn Pong PVC are live | Run private functional tests, then add reviewed routing only after TLS/state gates |
+| Native public ingress | Direct host-network listeners and Flux-owned native routes work on `.41`/`.42`; public DNS still points to `.73` | Complete authenticated/application regression, then review DNS cutover and health limitations |
+| ACME state | Native Cloudflare DNS-01, ClusterIssuer, and all seven staging Certificates are Ready | Exercise renewal/expiry handling and retain the old ACME rollback path; never multi-mount old `acme.json` |
+| Native applications | Pong, portfolio, Dex, Headlamp, Flux Web, and analytics staging are Ready; direct SNI routes return expected `200/302/404` responses | Complete authenticated OIDC, analytics collector, WebSocket, and failure/rollback tests before cutover |
 | Stateful data | Existing data remains on old k3d/local-path PVCs | Back up, restore to Longhorn, verify, and preserve single-writer SQLite |
 | Off-cluster backups | Contract/documentation exists, scheduled external backup does not | Supply object storage, encryption/KMS, retention, and restore rehearsal |
 | Authenticated synthetic checks | Public redirect contracts exist; interactive login is manual | Complete browser/operator checks and add external dashboard/analytics runners |
@@ -273,8 +279,8 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 - [x] Replace the obsolete broad SRE workstream plan with this migration plan.
 - [x] Record the exact native cluster, public edge, DNS, Git, and workload state.
 - [x] Review the local native-edge diff and run repository checks.
-- [x] Publish the reviewed native-edge and route-less application GitOps
-      changes; local rendering, safety scans, and live edge validation passed.
+- [x] Publish the reviewed native-edge, TLS, routing, policy, and application
+      GitOps changes; local rendering, safety scans, and live edge validation passed.
 - [x] Resume native Flux against the published revision and confirm the edge,
       source, application, and protected-secret inventories reconcile without
       recreating removed credential objects.
@@ -299,27 +305,28 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 
 - [x] Validate pinned Traefik chart and immutable image.
 - [x] Validate direct native HTTP/HTTPS listeners on both new nodes.
-- [x] Publish and adopt the Traefik HelmRelease through Flux. GitOps commit
-      `83c663b` contains the reviewed HelmRepository/HelmRelease, and the live
+- [x] Publish and adopt the Traefik HelmRelease through Flux. GitOps revision
+      `c083165` contains the reviewed edge/TLS/routing state, and the live
       release is Flux-owned and Ready.
 - [x] Stage the cert-manager `v1.21.1` controller and CRDs through Flux with
       immutable images, bounded resources, retained CRDs, and no ACME consumer.
 - [ ] Choose the ACME/certificate state architecture for two edge nodes.
       Current recommendation: cert-manager DNS-01 plus namespace-local TLS
       Secrets; do not use the old shared RWO `acme.json` design.
-- [ ] Stage TLS certificates and DNS-01 renewal without changing public records.
-- [ ] Deploy native route CRs/Ingresses for portfolio, Pong, analytics, Dex,
+- [x] Stage TLS certificates and DNS-01 resources without changing public records.
+- [x] Deploy native route Ingresses for portfolio, Pong, analytics, Dex,
       Headlamp, and Flux UI.
-- [ ] Test routes with direct node IPs and temporary host headers.
+- [x] Test routes with direct node IPs/SNI on both native edge nodes; public DNS
+      remains unchanged.
 
 ### Phase 3 — Workload and data migration
 
-- [x] Create the native Pong/portfolio namespaces and route-less Flux child
+- [x] Create the native Pong/portfolio namespaces and Flux child
       Kustomizations after the native context, Longhorn health, and publication
       gates passed.
-- [x] Deploy private route-less portfolio and Pong gateway/static/API staging
-      workloads; Dex, Headlamp, analytics, and Flux UI remain deferred until
-      their own secrets, routes, and state contracts are reviewed.
+- [x] Deploy native portfolio, Pong, Dex, Headlamp, analytics, and Flux UI
+      staging workloads with encrypted credential interfaces, TLS, routes, and
+      policy boundaries; production state remains separate.
 - [x] Create the native Pong Longhorn-backed RWO PVC with explicit prune/keep
       protection and verify its healthy three-replica volume; other stateful
       target PVC contracts remain pending.
@@ -333,8 +340,11 @@ healthy, and public services remain HTTP 200 through the old k3d edge.
 
 ### Phase 4 — Cutover and rollback validation
 
-- [ ] Validate all public hostnames, redirects, TLS SANs, WebSockets, analytics
-      paths, dashboard access, and Flux reconciliation on native edge.
+- [x] Validate direct native hostnames, redirects, TLS SANs, edge listeners,
+      analytics redirect/collector reachability, dashboard redirect, and Flux
+      reconciliation on both native edge nodes.
+- [ ] Complete authenticated OIDC journeys, Pong WebSocket regression, and
+      native analytics functional checks.
 - [ ] Establish a monitoring window with old k3d and native paths observable.
 - [ ] Change only the approved load balancer/DNS records.
 - [ ] Verify application health and user journeys repeatedly after cutover.
@@ -374,9 +384,9 @@ Old production:    k3d-pong on .73, still serving public traffic
 - `/root/sources/belacca-platform`: parent documentation and child gitlink
   state is published at the current parent commit.
 - `/root/sources/belacca-platform/belacca-gitops`: published native root,
-  edge, cert-manager controller/CRD, source, application, and
-  credential-boundary state at `83c663b`; Flux reconciliation is Ready.
-- `cloudnativepong`: published native-staging and cleanup state at `958a0ad`.
+  edge, cert-manager, TLS, routing, policy, source, application, and
+  credential-boundary state at `c083165`; Flux reconciliation is Ready.
+- `cloudnativepong`: published native-staging and repair state at `b9519b1`.
 - `francesco-belacca-site`: published documentation and generated deployment
   state at `15808ea`.
 - No passwords, tokens, private keys, plaintext Secret values, database files,
