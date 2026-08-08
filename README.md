@@ -55,18 +55,21 @@ make manifests    # render Pong, site, and platform Kustomizations
 
 ## Migration state
 
-The migration is a blue/green build with two deliberately separate planes:
+The migration is now cut over to native k3s:
 
-- **active-public:** the existing single-host `k3d-pong` cluster on `.73` still
-  owns public application traffic and remains the production rollback path;
-- **native-staging:** the validated three-server native k3s cluster is the
-  migration target. Its control plane, Flux, SOPS/age, Longhorn, cert-manager,
-  Flux-managed Traefik, TLS, native routes, and staged Pong/portfolio,
-  analytics, Dex, Headlamp, and Flux Web workloads are healthy. Direct SNI
-  probes succeed on `.41` and `.42`; public DNS, production data, and protected
-  production PVC ownership remain on `.73`.
+- **native-production:** the three-server native k3s cluster owns public
+  application traffic. Cloudflare DNS-only A records for all application
+  hostnames and `k3s-api.belacca.com` contain `.41` and `.42` only.
+- Native Flux, Traefik, cert-manager, TLS, Pong, portfolio, GoatCounter,
+  Dex, Headlamp, and Flux Web are healthy. Pong, GoatCounter, and Dex SQLite
+  state was quiesced, integrity-checked, restored into Longhorn-backed RWO
+  PVCs, and verified in native workloads.
+- **retired-old-production:** the former `k3d-pong` Podman cluster and its
+  auto-start unit were removed after the controlled handoff. Its local PVCs are
+  not a rollback target; external backup provisioning remains an accepted
+  follow-up risk.
 
-The execution state and remaining gates are tracked in [`plan.md`](plan.md).
+The final operational state and accepted risks are tracked in [`plan.md`](plan.md).
 The host-level companion plan is in the sibling
 [`belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
 repository and its
@@ -74,7 +77,7 @@ repository and its
 [`belacca-gitops/MIGRATION.md`](belacca-gitops/MIGRATION.md) documents
 Kubernetes ownership and cutover rules.
 
-Native staging is migration validation only, **not a development sandbox**.
+Native production is the live production plane, **not a development sandbox**.
 Do not use it for iterative source edits, temporary image patches, or
 experiments. For the fast development model, read
 [`docs/development-loop.md`](docs/development-loop.md). Use local process mode
@@ -118,9 +121,8 @@ protected operator surfaces or aliases, not public applications.
 
 ## Safety model
 
-- Do not delete or recreate the `k3d-pong` cluster from this workspace.
-- Treat native k3s as migration staging only; do not use native staging as a
-  development sandbox or apply ad hoc experiments there.
+- The former `k3d-pong` cluster is retired; do not recreate it from this
+  workspace. Native k3s is production; do not use it as a development sandbox.
 - Do not delete `pong-api-data`, its PV, or `kube-system/traefik-acme`.
 - Flux ownership and migration rules are documented in
   `belacca-gitops/MIGRATION.md`.
