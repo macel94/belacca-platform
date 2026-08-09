@@ -1,9 +1,11 @@
 # Belacca native k3s migration — status and execution plan
 
-**Status date:** 2026-08-08 14:40 CEST
-**Scope:** migrate the live single-host `k3d-pong` platform on `.73` to a
+**Status date:** 2026-08-09
+**Document state:** migration complete; this plan now records post-cutover
+operational hardening and evidence work.
+**Scope:** migrate the former single-host `k3d-pong` platform on `.73` to a
 three-server native k3s HA cluster without deleting or casually recreating
-workloads, PVCs, or the current production edge.
+workloads, PVCs, or the production edge.
 
 ## Executive status
 
@@ -226,36 +228,37 @@ The following remain explicit follow-ups:
 
 ## What is being worked on now
 
-The immediate post-cutover work is hardening: improve failover, externalize
-backups, complete authenticated browser journeys, and run failure drills while
-preserving native GitOps ownership.
+The migration is complete. Current work is the operational SRE loop around the
+native production plane: 99%/30d internal availability evidence, safe overload
+boundaries, incident learning, and hardening. The 99% target has no SLA or
+service credits; the separate controlled-drill recovery objective is P95 under
+six minutes and remains unproven.
 
-1. **Finish native edge/TLS ownership.** The Traefik and cert-manager
-   controller boundaries are Flux-owned. Next, review the DNS-01 credential,
-   Issuer, certificate Secret, and route ownership design without exposing
-   production ACME state or changing public DNS.
-2. **Choose the stable k3s API endpoint.** Determine whether the VPS provider
-   supplies a floating IP or TCP load balancer. Prefer that endpoint for
-   `k3s-api.belacca.com:6443`; the current three-A-record arrangement is only a
-   fallback and is not a health-aware API load balancer.
-3. **Finish native TLS/ACME design.** The old ACME data is a single-writer
-   `ReadWriteOnce` volume. It must not simply be mounted into two Traefik pods.
-   Choose and test either a safe single-writer arrangement or a DNS-01
-   certificate-management design that produces a Kubernetes TLS Secret for
-   both edge nodes.
-4. **Stage native routing without public DNS changes.** Deploy the application
-   namespaces, services, routes, dashboard access, Dex, and TLS resources in
-   native GitOps. Validate them through direct node IPs/temporary host headers.
-5. **Migrate state safely.** Take verified external copies of Pong and GoatCounter
-   SQLite data, restore into Longhorn-backed single-writer PVCs, and validate
-   application startup and data integrity before any public cutover.
-6. **Run the native application test matrix.** Validate Pong create/join/
-   WebSocket behavior, portfolio health, analytics collector paths, Dex/OIDC,
-   Headlamp, Flux UI, certificates, redirects, NetworkPolicies, and rollback.
-7. **Cut over only after a review gate.** Move public ingress/API traffic through
-   the selected load balancer/DNS strategy, monitor the old and new paths in
-   parallel, and retain the k3d rollback path until the post-cutover checks
-   pass.
+1. **Maintain external SLO evidence.** `belacca-status` publishes sanitized
+   hourly observations and `slo.json`; 30-day values remain not reportable until
+   the complete valid 720-slot window exists. Analytics SLO eligibility requires
+   both `/status` and `/count`.
+2. **Use native diagnostics correctly.** Native Prometheus is private diagnostic
+   telemetry for Pong/Flux and does not replace external availability evidence.
+   Flux notification resources are committed as a diagnostic contract, but the
+   destination Secret and paging policy remain unprovisioned.
+3. **Repeat isolated capacity baselines.** The disposable k3d workflow is
+   manual-only, loopback-bound, serialized, bounded, and redacted. The first
+   8-concurrent run hit Pong's WebSocket admission boundary before CPU/RAM
+   saturation; this is not a production capacity or recovery claim.
+4. **Exercise controlled recovery.** Prepare and run one-fault-at-a-time native
+   edge/control-plane/storage drills only after approval, with P95-under-six-
+   minute measurement and incident evidence. Do not use native production as a
+   load or chaos sandbox.
+5. **Externalize state recovery.** Configure encrypted off-cluster backups,
+   retention, freshness/integrity alerts, and isolated restore rehearsals for
+   Pong, GoatCounter, and Dex.
+6. **Close failure-domain gaps.** Select a health-aware API/ingress endpoint,
+   verify native NetworkPolicy enforcement, complete authenticated operator
+   journeys, enforce image provenance, and review the Traefik UID 0 exception.
+
+The former migration steps and retired-runtime procedures remain below for
+historical audit context; they are not current operational instructions.
 
 ## Current problems, risks, and their status
 
@@ -271,11 +274,11 @@ public services return the expected responses through native production.
 | Stable k3s API endpoint | `k3s-api.belacca.com` resolves to native `.41`/`.42` only; kubeconfig still uses `.41` | Health-aware VIP/LB remains a hardening follow-up; direct DNS fallback is accepted for now |
 | Native public ingress | Public DNS now resolves to `.41`/`.42`; both native edges serve the routes | Monitor direct-DNS round-robin behavior and retain a reviewed manual DNS removal procedure |
 | ACME state | Native Cloudflare DNS-01, ClusterIssuer, and all seven Certificates are Ready | Exercise renewal/expiry handling; never multi-mount old `acme.json` |
-| Native applications | Pong, portfolio, Dex, Headlamp, Flux Web, and analytics are Ready; pinned-edge routes and Pong WebSocket/analytics checks pass | Complete authenticated browser journeys and failure drill as follow-up |
+| Native applications | Pong, portfolio, Dex, Headlamp, Flux Web, and analytics are Ready; external portfolio/Pong/analytics checks and redirect diagnostics are implemented | Complete authenticated browser journeys and native failure drills as follow-up |
 | Stateful data | Pong, GoatCounter, and Dex were quiesced and restored to healthy native Longhorn RWO PVCs | Add external backup retention and repeat isolated restore rehearsal |
 | Off-cluster backups | Contract/documentation exists, scheduled external backup does not | Supply object storage, encryption/KMS, retention, and restore rehearsal |
 | Authenticated synthetic checks | Public redirect contracts exist; interactive login is manual | Complete browser/operator checks and add external dashboard/analytics runners |
-| GitOps publication | Infrastructure, Pong, portfolio, and GitOps child commits are published; native root/edge/application inventories are Ready | Keep parent pins current and preserve Flux ownership during route/state work |
+| GitOps publication | Native root, routing, observability, notification contract, and child application pins are published and validated | Keep parent pins current and preserve Flux ownership |
 | Native credential boundary | Old-production encrypted credential manifests were removed; native consumers use reviewed encrypted interfaces | Keep credential consumers and lifecycle reviewed; Cloudflare DNS-01 is active |
 | State migration | Controlled local handoff completed; SQLite integrity checks and native startup passed | Externalize the artifacts and rehearse restore outside the live handoff path |
 
@@ -403,16 +406,23 @@ Retired old k3d:    k3d-pong on .73; native DNS cutover complete
 
 ### Repository state
 
-- `/root/sources/belacca-infrastructure`: published safeguards/documentation
-  and cert-manager-boundary documentation at commit `7a61b86`.
-- `/root/sources/belacca-platform`: parent documentation and child gitlink
-  state is published at the current parent commit.
-- `/root/sources/belacca-platform/belacca-gitops`: published native root,
-  edge, cert-manager, TLS, routing, policy, source, application, and
-  credential-boundary state at `c083165`; Flux reconciliation is Ready.
-- `cloudnativepong`: published native cutover WebSocket-origin fix at `f46ceb8`.
-- `francesco-belacca-site`: published documentation and generated deployment
-  state at `15808ea`.
+- `/root/sources/belacca-infrastructure`: published native host safeguards and
+  security-boundary documentation; external backup, API failover, and node
+  failure rehearsal remain unproven.
+- `/root/sources/belacca-platform`: current parent commit pins all reviewed
+  child documentation, SLO, observability, notification, telemetry, and
+  capacity changes.
+- `/root/sources/belacca-platform/belacca-gitops`: native root, routing,
+  private observability, notification contract, catalog, and current production
+  docs are published; the destination Secret and paging policy remain absent.
+- `cloudnativepong`: native runtime, external SLO journey contract, bounded
+  telemetry, guarded disposable capacity workflow, and redacted evidence path
+  are published; the 8-concurrent baseline hit WebSocket admission before
+  resource saturation.
+- `francesco-belacca-site`: public project descriptions and reliability/status
+  documentation describe the current evidence boundaries and unproven gaps.
+- `belacca-status`: hourly external checks and sanitized 99%/30d SLO evidence
+  are published; values remain non-reportable until the complete valid window.
 - No passwords, tokens, private keys, plaintext Secret values, database files,
   or generated private telemetry belong in this plan.
 
