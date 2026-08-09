@@ -50,7 +50,9 @@ make update       # fetch and fast-forward submodules to their configured main b
 make validate     # run application tests and render Kubernetes manifests
 make site-test    # portfolio tests
 make pong-test    # Go tests, race tests, and vet
-make manifests    # render Pong, site, and platform Kustomizations
+make manifests    # validate and render Pong/site plus native production Kustomizations
+make manifests-native-edge # compatibility check for native production and edge renders
+make manifests-historical  # explicitly render retired old-production manifests for audit
 ```
 
 ## Migration state
