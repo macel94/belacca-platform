@@ -3,7 +3,29 @@
 This workspace has an explicitly invoked evidence collector at
 [`scripts/incident-evidence.sh`](../scripts/incident-evidence.sh). It creates a
 local JSON and/or Markdown snapshot; it is not a daemon, monitor, pager, or
-cluster controller.
+cluster controller. The incident response lifecycle, severity levels, roles,
+objective postmortem triggers, sanitized incident-state template, and blameless
+postmortem template are in [`incident-lifecycle.md`](incident-lifecycle.md).
+
+## Lifecycle at a glance
+
+Declare early when user impact is plausible, name an Incident Commander (IC),
+and assign Operations, Communications, and Planning/Follow-up leads. Keep one
+UTC timeline, link every observation or hypothesis to a source ID and evidence
+timestamp, hand off explicitly, and close only after impact/recovery,
+monitoring, communications, action ownership, and the postmortem decision are
+recorded. A small incident may combine roles, but the combination and handoff
+must be written down.
+
+Automatic postmortem review is required for a critical user-facing failure,
+a monitoring blind spot lasting more than two expected hourly observations, any
+suspected data-integrity or security event, an approved isolated-drill recovery
+objective miss, or a repeat/noisy pattern (two same-signature incidents in 30
+days or three human-actionable alerts in seven days). A human may request one
+at any time. The public objective is 99% availability per service over 30 days
+with no SLA; the separate controlled-drill target is P95 recovery under six
+minutes. Neither is established by this collector or by the disposable
+capacity-baseline example.
 
 ## Use
 

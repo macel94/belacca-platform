@@ -92,15 +92,35 @@ The helper scripts never stage or commit files inside a child repository. A
 working tree such as `cloudnativepong/ops/` is intentionally reported but left
 untouched.
 
-## Incident evidence and public status
+## Incident lifecycle, evidence, and public status
+
+[`docs/incident-lifecycle.md`](docs/incident-lifecycle.md) defines the concise
+incident lifecycle: declare early, assign an Incident Commander (IC),
+Operations Lead, Communications Lead, and Planning/Follow-up Lead, maintain a
+UTC timeline with evidence source IDs/timestamps, hand off explicitly, recover,
+and close against written criteria. It defines SEV-1 through SEV-4 and
+objective postmortem triggers for user-facing critical failure, monitoring
+failure, data integrity/security events, a missed approved recovery objective,
+and repeat/noisy incidents. It also contains sanitized incident-state and
+blameless postmortem templates.
 
 [`scripts/incident-evidence.sh`](scripts/incident-evidence.sh) is an explicitly
 invoked, bounded, read-only collector for selected kubectl/Flux/workspace status
 inputs. It emits local JSON/Markdown with timestamps, source references,
 redactions, hypotheses, confidence, and pending human-approval placeholders.
-It never queries Secret contents, mutates the cluster, or approves an action.
-See [`docs/incident-evidence.md`](docs/incident-evidence.md) for the AI boundary:
-read-only, evidence-linked, human approval, and GitOps-only production changes.
+It never queries Secret contents, mutates the cluster, declares an incident, or
+approves an action. Evidence is not proof of health: every claim must retain
+its source ID, timestamp, status, and limitations. Templates and evidence must
+not contain secrets, tokens, player data, or unredacted private telemetry.
+
+There is no automatic approval or mutation capability in this documentation
+or collector: only a human can interpret evidence, declare/close an incident,
+approve an action, or communicate externally. Production changes—including emergency
+rollback or traffic changes—remain reviewed, human-approved, tested where
+possible, and GitOps-only through the appropriate repository and Flux path.
+The public objective is 99% availability over 30 days per service with no SLA;
+the separate controlled-drill objective is P95 recovery under six minutes. A
+short disposable baseline or evidence snapshot cannot prove either objective.
 
 The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
