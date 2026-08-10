@@ -11,20 +11,20 @@ remain in their own repositories:
 | `cloudnativepong/` | [`macel94/cloudnativepong`](https://github.com/macel94/cloudnativepong) | Pong application, images, app manifests |
 | `francesco-belacca-site/` | [`macel94/francesco-belacca-site`](https://github.com/macel94/francesco-belacca-site) | Personal site, image, site manifests |
 | `belacca-status/` | [`macel94/belacca-status`](https://github.com/macel94/belacca-status) | Hourly external observations and sanitized status history |
-| `belacca-gitops/` | [`macel94/belacca-gitops`](https://github.com/macel94/belacca-gitops) | Flux root, cluster infrastructure, host routing |
+| `belacca-gitops/` | [`macel94/belacca-gitops`](https://github.com/macel94/belacca-gitops) | Flux root, Kubernetes resources, host routing |
+| `belacca-infrastructure/` | [`macel94/belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure) | Host preparation, firewall posture, native k3s, storage prerequisites |
 
-The application and deployment repositories are normally pinned to known
-commits as submodules. The status repository is maintained separately and is
-also checked out here for local review; its first published commit must exist
-before the parent can record a valid submodule pointer. The parent repository
-does not flatten or duplicate child history, so each project can still be
-reviewed, built, and deployed independently.
+The application and platform repositories are pinned to known commits as
+submodules. The status repository is maintained separately and is also checked
+out here for local review; its first published commit must exist before the
+parent can record a valid submodule pointer. The parent repository does not
+flatten or duplicate child history, so each project can still be reviewed,
+built, and deployed independently.
 
-The native host foundation is maintained in the sibling
-[`macel94/belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
-repository, which owns host preparation, firewall posture, native k3s
-configuration, and storage prerequisites. Kubernetes resources and Flux
-ownership remain in `belacca-gitops/`.
+The native host foundation is included here through
+`belacca-infrastructure/`, which owns host preparation, firewall posture,
+native k3s configuration, and storage prerequisites. Kubernetes resources and
+Flux ownership remain in `belacca-gitops/`.
 
 ## Clone everything
 
@@ -72,10 +72,8 @@ The migration is now cut over to native k3s:
   follow-up risk.
 
 The final operational state and accepted risks are tracked in [`plan.md`](plan.md).
-The host-level companion plan is in the sibling
-[`belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
-repository and its
-[`docs/MIGRATION-PLAN.md`](https://github.com/macel94/belacca-infrastructure/blob/main/docs/MIGRATION-PLAN.md);
+The host-level companion plan is in
+[`belacca-infrastructure/docs/MIGRATION-PLAN.md`](belacca-infrastructure/docs/MIGRATION-PLAN.md);
 [`belacca-gitops/MIGRATION.md`](belacca-gitops/MIGRATION.md) documents
 Kubernetes ownership and cutover rules.
 
@@ -89,6 +87,14 @@ warm development plane exists. GitOps is reserved for reviewed promotion.
 `make update` changes the checked-out submodule commits and stages the parent
 Gitlinks, but does not commit or push. Review the resulting parent diff before
 publishing a new workspace pin.
+
+Dependabot is configured daily in every public repository for each supported
+ecosystem present: Git submodules and GitHub Actions in this workspace,
+GitHub Actions in GitOps and infrastructure, npm in status, npm/Docker in the
+portfolio, and Go modules/npm/Docker/GitHub Actions in Pong. The infrastructure
+repository has no package, Docker, or language-module manifest for Dependabot
+to update; its pinned k3s installer version and Debian package set remain
+explicit infrastructure inputs rather than Dependabot-supported ecosystems.
 
 The helper scripts never stage or commit files inside a child repository. A
 working tree such as `cloudnativepong/ops/` is intentionally reported but left

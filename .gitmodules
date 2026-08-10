@@ -13,3 +13,7 @@
 [submodule "belacca-status"]
 	path = belacca-status
 	url = https://github.com/macel94/belacca-status.git
+[submodule "belacca-infrastructure"]
+	path = belacca-infrastructure
+	url = https://github.com/macel94/belacca-infrastructure.git
+	branch = main

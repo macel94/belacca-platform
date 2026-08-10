@@ -23,7 +23,7 @@ evidence-bundle:
 
 update:
 	git submodule update --remote --merge
-	git add .gitmodules cloudnativepong francesco-belacca-site belacca-status belacca-gitops
+	git add .gitmodules cloudnativepong francesco-belacca-site belacca-status belacca-gitops belacca-infrastructure
 	@echo 'Submodules updated and parent Gitlinks staged; review before committing.'
 
 site-test:

@@ -25,7 +25,7 @@ show_repo() {
 }
 
 show_repo .
-for path in cloudnativepong francesco-belacca-site belacca-status belacca-gitops; do
+for path in cloudnativepong francesco-belacca-site belacca-status belacca-gitops belacca-infrastructure; do
   if [ -f "$path/.git" ] || [ -d "$path/.git" ]; then
     show_repo "$path"
   else

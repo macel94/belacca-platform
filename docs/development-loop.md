@@ -47,8 +47,8 @@ Kubernetes integration work.
 
 The migration execution state is tracked in the parent
 [`plan.md`](../plan.md). Host preparation and native k3s prerequisites live in
-the sibling [`belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure)
-repository; Kubernetes resource ownership and Flux cutover rules live in
+[`belacca-infrastructure/`](../belacca-infrastructure); Kubernetes resource
+ownership and Flux cutover rules live in
 [`belacca-gitops/MIGRATION.md`](../belacca-gitops/MIGRATION.md).
 
 On the current host, `kubectl` can reach the existing cluster, but the installed
@@ -255,8 +255,8 @@ expensive operations when they are irrelevant to the question being tested.
 ## References
 
 - [Platform migration status and execution plan](../plan.md)
-- [Sibling host infrastructure](https://github.com/macel94/belacca-infrastructure)
-- [Sibling infrastructure migration plan](https://github.com/macel94/belacca-infrastructure/blob/main/docs/MIGRATION-PLAN.md)
+- [Host infrastructure](../belacca-infrastructure/)
+- [Infrastructure migration plan](../belacca-infrastructure/docs/MIGRATION-PLAN.md)
 - [Tilt Live Update](https://docs.tilt.dev/live_update_reference.html)
 - [k3d local registries](https://k3d.io/stable/usage/registries/)
 - [k3d with Podman](https://k3d.io/v5.9.0/usage/advanced/podman/)
