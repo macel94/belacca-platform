@@ -71,7 +71,7 @@ The migration is now cut over to native k3s:
   not a rollback target; external backup provisioning remains an accepted
   follow-up risk.
 
-The final operational state and accepted risks are tracked in [`plan.md`](plan.md).
+The final operational state and accepted risks are tracked in the host-level migration plan and the GitOps ownership rules below.
 The host-level companion plan is in
 [`belacca-infrastructure/docs/MIGRATION-PLAN.md`](belacca-infrastructure/docs/MIGRATION-PLAN.md);
 [`belacca-gitops/MIGRATION.md`](belacca-gitops/MIGRATION.md) documents

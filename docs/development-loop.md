@@ -45,8 +45,7 @@ lifecycle operations. Until a separate development plane exists, use local mode
 for ordinary changes and an explicitly disposable, isolated environment for
 Kubernetes integration work.
 
-The migration execution state is tracked in the parent
-[`plan.md`](../plan.md). Host preparation and native k3s prerequisites live in
+The migration is complete; host preparation and native k3s prerequisites live in
 [`belacca-infrastructure/`](../belacca-infrastructure); Kubernetes resource
 ownership and Flux cutover rules live in
 [`belacca-gitops/MIGRATION.md`](../belacca-gitops/MIGRATION.md).
@@ -254,7 +253,6 @@ expensive operations when they are irrelevant to the question being tested.
 
 ## References
 
-- [Platform migration status and execution plan](../plan.md)
 - [Host infrastructure](../belacca-infrastructure/)
 - [Infrastructure migration plan](../belacca-infrastructure/docs/MIGRATION-PLAN.md)
 - [Tilt Live Update](https://docs.tilt.dev/live_update_reference.html)
