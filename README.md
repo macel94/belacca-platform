@@ -61,7 +61,8 @@ The migration is now cut over to native k3s:
 
 - **native-production:** the three-server native k3s cluster owns public
   application traffic. Cloudflare DNS-only A records for all application
-  hostnames and `k3s-api.belacca.com` contain `.41` and `.42` only.
+  hostnames contain `.73`, `.41`, and `.42`; `k3s-api.belacca.com` remains
+  `.41` and `.42` only.
 - Native Flux, Traefik, cert-manager, TLS, Pong, portfolio, GoatCounter,
   Dex, Headlamp, and Flux Web are healthy. Pong, GoatCounter, and Dex SQLite
   state was quiesced, integrity-checked, restored into Longhorn-backed RWO

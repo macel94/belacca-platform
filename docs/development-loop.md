@@ -31,9 +31,10 @@ The workspace currently has:
 
 - `cloudnativepong` local mode for the fastest application feedback;
 - **native production** at context `belacca-native`, serving public traffic
-  through Traefik on `.41` and `.42`, with Flux, SOPS/age, Longhorn, cert-manager,
+  through Traefik on `.73`, `.41`, and `.42`, with Flux, SOPS/age, Longhorn, cert-manager,
   Pong, portfolio, analytics, Dex, Headlamp, and Flux Web;
-- direct Cloudflare DNS round-robin across `.41` and `.42`, without health-aware
+- direct Cloudflare DNS round-robin across `.73`, `.41`, and `.42` for
+  application hosts, without health-aware
   withdrawal; the former `k3d-pong` runtime is retired;
 - GitHub Actions that build and test images on hosted runners;
 - Flux polling the application sources and reconciling production manifests;
