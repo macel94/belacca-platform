@@ -1,0 +1,66 @@
+name: Incident follow-up
+description: Track one corrective action from a reviewed incident or game-day.
+title: "[Follow-up] "
+labels:
+  - incident-follow-up
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Follow-ups are owned GitHub issues, not production approvals. Do not include secrets, player data, tokens, credentials, or unredacted private telemetry. Link sanitized evidence IDs and timestamps only.
+  - type: input
+    id: incident
+    attributes:
+      label: Incident or game-day record
+      description: Link the sanitized incident/postmortem record.
+      placeholder: "https://github.com/macel94/belacca-platform/blob/main/docs/postmortems/..."
+    validations:
+      required: true
+  - type: textarea
+    id: action
+    attributes:
+      label: Corrective action
+      description: State the concrete system, signal, process, or resilience improvement.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Accountable owner
+      description: One role or GitHub handle; do not list a team as a substitute for an owner.
+    validations:
+      required: true
+  - type: input
+    id: due
+    attributes:
+      label: Due date
+      description: Use a UTC date or explicitly write TBD with a reason.
+      placeholder: "YYYY-MM-DD UTC or TBD — reason"
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation evidence
+      description: Define the test/review/metric that proves completion, and where the sanitized evidence will be linked.
+      placeholder: "Validation: ... Evidence: source-id @ UTC timestamp / workflow URL"
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Change and safety boundary
+      description: Explain rollout/rollback or expiry and name the reviewed GitOps path when applicable. No direct cluster mutation instructions.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checklist
+      options:
+        - label: I have omitted secrets, player data, tokens, credentials, and unredacted private telemetry.
+          required: true
+        - label: This issue does not itself approve or execute a production change.
+          required: true
+        - label: The validation criterion is objective and includes sanitized evidence.
+          required: true
