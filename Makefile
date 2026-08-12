@@ -1,4 +1,4 @@
-.PHONY: init status evidence-test site-test status-test pong-test manifests manifests-native-edge manifests-historical validate evidence-bundle
+.PHONY: init status evidence-test drill-test drill-validate site-test status-test pong-test manifests manifests-native-edge manifests-historical validate evidence-bundle
 
 SHELL := /usr/bin/env bash
 
@@ -17,6 +17,13 @@ status:
 
 evidence-test:
 	python3 -m unittest discover -s tests -v
+
+drill-test:
+	python3 -m unittest tests.test_controlled_drill -v
+
+drill-validate:
+	@test -n "$(RECORD)" || { echo 'Usage: make drill-validate RECORD=path/to/record.json' >&2; exit 2; }
+	python3 scripts/validate_controlled_drill.py "$(RECORD)"
 
 evidence-bundle:
 	./scripts/incident-evidence.sh collect --format both
@@ -79,6 +86,6 @@ manifests-native-edge:
 	@echo 'Rendered native production and edge manifests:'
 	@wc -l /tmp/belacca-platform-{gitops-native,edge-native}.yaml
 
-validate: site-test status-test pong-test manifests
+validate: evidence-test drill-test site-test status-test pong-test manifests
 	git diff --check
 	@echo 'Workspace validation passed.'

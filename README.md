@@ -44,7 +44,9 @@ make init
 
 ```bash
 make status       # show parent and submodule branches/commits
-make evidence-test # run bounded evidence-tool tests
+make evidence-test # run bounded evidence-tool and contract tests
+make drill-test   # run controlled-drill contract tests
+make drill-validate RECORD=path/to/record.json # validate sanitized drill evidence (read-only)
 make evidence-bundle # explicitly collect local evidence (read-only)
 make update       # fetch and fast-forward submodules to their configured main branches
 make validate     # run application tests and render Kubernetes manifests
@@ -128,8 +130,11 @@ approve an action, or communicate externally. Production changes—including eme
 rollback or traffic changes—remain reviewed, human-approved, tested where
 possible, and GitOps-only through the appropriate repository and Flux path.
 The public objective is 99% availability over 30 days per service with no SLA;
-the separate controlled-drill objective is P95 recovery under six minutes. A
-short disposable baseline or evidence snapshot cannot prove either objective.
+the separate controlled-drill objective is P95 recovery under six minutes. The
+controlled-drill evidence contract and fail-closed operator runbook are in
+[`docs/controlled-drill-recovery.md`](docs/controlled-drill-recovery.md); its
+validator never executes a drill or targets the live public endpoint. A short
+disposable baseline or evidence snapshot cannot prove either objective.
 
 The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
