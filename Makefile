@@ -6,6 +6,22 @@ NATIVE_PRODUCTION_SOURCE ?= belacca-gitops/clusters/belacca-production
 NATIVE_EDGE_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/edge
 NATIVE_ROUTING_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/routing
 NATIVE_OBSERVABILITY_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/observability
+NATIVE_PONG_SOURCE ?= cloudnativepong/k8s/overlays/native-production
+NATIVE_SITE_SOURCE ?= francesco-belacca-site/deploy
+NATIVE_KUSTOMIZATIONS := \
+	$(NATIVE_PRODUCTION_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/flux-system \
+	$(NATIVE_PRODUCTION_SOURCE)/secrets \
+	$(NATIVE_PRODUCTION_SOURCE)/longhorn \
+	$(NATIVE_EDGE_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/cert-manager \
+	$(NATIVE_PRODUCTION_SOURCE)/tls \
+	$(NATIVE_ROUTING_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/dex \
+	$(NATIVE_PRODUCTION_SOURCE)/analytics \
+	$(NATIVE_OBSERVABILITY_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/headlamp \
+	$(NATIVE_PRODUCTION_SOURCE)/flux-web
 HISTORICAL_PRODUCTION_SOURCE ?= belacca-gitops/clusters/vmi3474918
 HISTORICAL_ROUTING_SOURCE ?= $(HISTORICAL_PRODUCTION_SOURCE)/routing
 
@@ -39,9 +55,9 @@ pong-test:
 	cd cloudnativepong && go vet ./...
 
 manifests:
-	@for path in "$(NATIVE_PRODUCTION_SOURCE)" "$(NATIVE_ROUTING_SOURCE)" "$(NATIVE_OBSERVABILITY_SOURCE)"; do \
+	@set -e; for path in $(NATIVE_KUSTOMIZATIONS) "$(NATIVE_PONG_SOURCE)" "$(NATIVE_SITE_SOURCE)"; do \
 		if [ ! -f "$$path/kustomization.yaml" ]; then \
-			echo "Required native production kustomization is absent: $$path/kustomization.yaml" >&2; \
+			echo "Required live production kustomization is absent: $$path/kustomization.yaml" >&2; \
 			exit 1; \
 		fi; \
 	done
@@ -49,19 +65,25 @@ manifests:
 	python3 belacca-gitops/scripts/validate-recovery-contract.py
 	python3 belacca-gitops/scripts/validate-observability.py
 	python3 belacca-gitops/scripts/extract-prometheus-config.py
-	kubectl kustomize cloudnativepong/k8s/overlays/server >/tmp/belacca-platform-pong.yaml
-	kubectl kustomize francesco-belacca-site/deploy >/tmp/belacca-platform-site.yaml
-	kubectl kustomize "$(NATIVE_PRODUCTION_SOURCE)" >/tmp/belacca-platform-native-production.yaml
-	kubectl kustomize "$(NATIVE_ROUTING_SOURCE)" >/tmp/belacca-platform-native-routing.yaml
-	kubectl kustomize "$(NATIVE_OBSERVABILITY_SOURCE)" >/tmp/belacca-platform-native-observability.yaml
-	@echo 'Rendered application and native production manifests:'
-	@wc -l /tmp/belacca-platform-{pong,site,native-production,native-routing,native-observability}.yaml
+	@rm -f /tmp/belacca-platform-live-*.yaml
+	@set -e; for path in $(NATIVE_KUSTOMIZATIONS) "$(NATIVE_PONG_SOURCE)" "$(NATIVE_SITE_SOURCE)"; do \
+		name=$$(printf '%s' "$$path" | tr '/.' '__'); \
+		kubectl kustomize "$$path" >"/tmp/belacca-platform-live-$$name.yaml"; \
+		test -s "/tmp/belacca-platform-live-$$name.yaml"; \
+		echo "rendered live production $$path"; \
+	done
+	@echo 'Rendered every live production Kustomization (native root, Flux children, applications, and routing):'
+	@wc -l /tmp/belacca-platform-live-*.yaml
 
-# Explicit audit-only check for the retired old-production GitOps tree.
+# Explicit audit-only check for the retired old-production GitOps tree. This
+# target is never part of normal validation and is not a deployment target.
 manifests-historical:
+	@test -f "$(HISTORICAL_PRODUCTION_SOURCE)/HISTORICAL-REFERENCE.md"
+	python3 belacca-gitops/scripts/validate-observability.py --historical
+	python3 belacca-gitops/scripts/extract-prometheus-config.py --historical
 	kubectl kustomize "$(HISTORICAL_PRODUCTION_SOURCE)" >/tmp/belacca-platform-historical-gitops.yaml
 	kubectl kustomize "$(HISTORICAL_ROUTING_SOURCE)" >/tmp/belacca-platform-historical-routing.yaml
-	@echo 'Rendered historical/retired manifests (not live production):'
+	@echo 'Rendered historical/reference manifests only (not live production and not deployable):'
 	@wc -l /tmp/belacca-platform-{historical-gitops,historical-routing}.yaml
 
 # Compatibility check for callers that specifically validate the native edge.
