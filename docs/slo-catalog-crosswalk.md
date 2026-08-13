@@ -13,7 +13,8 @@ portfolio, Pong, analytics, and the protected dashboard service:
   runbook;
 - proposed 99%/30d SLO status and the user journey indicator;
 - the external hourly `belacca-status/slo.json` measurement source for the
-  public services, with complete 720-slot evidence required before reporting;
+  public services, with measured levels published from available good/bad
+  observations and the latest 720-slot rolling scope after 30 days;
   and
 - the live native-production implementation path under
   `clusters/belacca-production/`.
@@ -31,11 +32,12 @@ next changed, its entries must remain consistent with that contract:
 | `analytics` | `analytics` | `clusters/belacca-production/analytics` | `belacca-status:slo.json` |
 | `dashboard` / protected operator surfaces | `operator-surfaces` | `clusters/belacca-production/headlamp`, `flux-web`, `dex`, and platform routing | **none until authenticated probe exists** |
 
-The public SLOs remain proposed/not reportable in the checked-in evidence because
-the current history does not contain a complete 720-slot window. The operator
-surface entry remains `not_configured`; no credentials are present in the
-public artifact or this parent repository. Do not mark either state live from a
-render, a status-page response, or a single observation.
+The public SLOs remain proposed as internal objectives, while checked-in evidence
+publishes measured levels and coverage from the observations already available.
+The measurement window changes to the latest rolling 720 slots after 30 days.
+The operator surface entry remains `not_configured`; no credentials are present
+in the public artifact or this parent repository. Do not mark either state live
+from a render, a status-page response, or a single observation.
 
 ## Required catalog update on future service changes
 

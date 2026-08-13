@@ -29,8 +29,10 @@ ignored: a low-rate probe can miss short or partial failures, and incident
 response remains independent of budget arithmetic.
 
 This is an **internal engineering objective**. It is **not an SLA, warranty,
-customer promise, service-credit commitment, or compensation obligation**. No
-service may claim 99% until a complete valid measurement window exists.
+customer promise, service-credit commitment, or compensation obligation**.
+Each service publishes its current measured level from observed good and bad
+journeys; after the evidence spans 30 days, the denominator becomes the latest
+complete rolling window.
 
 Protected operator surfaces (Headlamp/dashboard, Flux Web UI, and the Dex alias)
 have a separate conditional 99%/30-day objective in the policy contract, but it
@@ -69,16 +71,17 @@ WebSocket-compatible journey.
   missing a required component, or otherwise cannot be classified from
   sanitized evidence. Unknown never counts as good or bad.
 
-The denominator remains all 720 expected slots. Missing monitoring data is not
-implicitly healthy and does not refill the budget. Any unknown, invalid, or
-incomplete slot prevents a numeric SLO/error-budget claim and puts the service
-in **caution/review** until the evidence source is repaired. A short probe,
-status-page response, native metric, incident bundle, or partial history cannot
-prove 99%.
+Unknown monitoring data is not implicitly healthy and does not refill the
+budget. Before 30 days, measured level and budget context use observed good and
+bad slots; after 30 days, they use the latest 720-slot rolling window. Unknown,
+invalid, or incomplete slots remain visible in coverage and put the service in
+**caution/review** for release decisions, but they do not erase the numeric
+level measured from valid observations. A short probe, status-page response,
+native metric, or incident bundle cannot prove the complete 30-day objective.
 
 ## Error-budget decision policy
 
-Evaluate each service independently from the complete valid rolling window.
+Evaluate each service independently from available observed history, switching to the latest rolling window after the evidence spans 30 days.
 Unknown data takes precedence over release confidence. An active user-impacting
 incident takes precedence over arithmetic.
 
@@ -101,8 +104,9 @@ These signals must not be conflated:
    communication artifact with operational/degraded/incident/unknown state. It
    is not an SLO calculation, durable availability proof, or pager.
 2. **SLO evidence** (`history/` and `slo.json`): durable sanitized evidence for
-   internal engineering review. Numeric values are withheld until the complete
-   720-slot window is valid. It is not a public uptime claim.
+   internal engineering review. Current measured values are published from valid
+   observed good/bad slots, with coverage shown; the complete 720-slot rolling
+   window is the stronger 30-day scope. It is not a public uptime claim.
 3. **Paging:** an actionable alert path with an owner, tested delivery, and
    separately reviewed thresholds (for example, burn-rate policy). Status
    publication and native diagnostics do not constitute paging. No paging

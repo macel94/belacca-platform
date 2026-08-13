@@ -47,10 +47,11 @@ in Git.
       boundaries in the deployed native path.
 - [ ] The measurement source is running on its intended schedule from its
       intended failure domain, and durable sanitized history is being retained.
-- [ ] A complete valid 720-slot window exists before any numeric 99% claim is
-      made; otherwise the state remains proposed/insufficient-data/unknown.
+- [ ] The current measured level uses valid observed good/bad slots; a complete
+      valid 720-slot window exists before claiming the full rolling 30-day objective.
 - [ ] A valid failed journey is recorded as bad, while missing or malformed
-      evidence is recorded as unknown and blocks claims.
+      evidence is recorded as unknown and cannot improve the measured level or
+      support the complete rolling 30-day objective.
 - [ ] Status publication, SLO evidence, and paging have been tested as separate
       paths. No status artifact is treated as a page.
 - [ ] Alert ownership, burn-rate thresholds, routing, delivery, suppression,

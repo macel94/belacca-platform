@@ -12,7 +12,7 @@
     "window_hours": 720,
     "observation_cadence": "1h",
     "error_budget_bad_slots": 7.2,
-    "claim_rule": "No numeric SLO or error-budget claim is made until all 720 expected hourly slots in the rolling window are valid and classified."
+    "claim_rule": "Publish the measured level immediately as good observed slots divided by good plus bad observed slots; use the latest rolling 720-slot window once the evidence spans 30 days, with coverage and unknown slots shown alongside it."
   },
   "non_sla": "This is an internal engineering objective. It is not an SLA, warranty, customer promise, service-credit commitment, or compensation obligation.",
   "measurement": {
@@ -21,9 +21,9 @@
     "source_history_schema": "belacca.observation.v1",
     "source_kind": "external-durable-synthetic-probe",
     "attempt_policy": "The source may retry each check up to three times; a slot is bad only after the source's configured attempts fail.",
-    "denominator": "The 720 expected hourly service slots, not only slots that produced a record.",
-    "unknown_policy": "Unknown slots never count as good or bad. Missing, malformed, duplicate/ambiguous, stale, or incomplete component evidence prevents a numeric claim and moves the decision to caution/review until corrected. A recorded failed journey remains bad; it is not changed to unknown because the result is inconvenient.",
-    "window_policy": "Use the complete rolling 720-slot window. Do not backfill, reinterpret, or declare 99% from a short snapshot, a status-page response, native metrics, or an incomplete window."
+    "denominator": "Before the evidence spans 30 days, use good observed slots divided by good plus bad observed slots; thereafter use the latest rolling 720-slot window. The expected 720 slots remain visible as coverage context.",
+    "unknown_policy": "Unknown slots never count as good or bad. Missing, malformed, duplicate/ambiguous, stale, or incomplete component evidence remains visible in coverage and cannot improve the measured level. A recorded failed journey remains bad; it is not changed to unknown because the result is inconvenient.",
+    "window_policy": "Use available observed history until it spans 30 days, then use the latest rolling 720-slot window. Do not backfill, reinterpret, or declare 99% from a status-page response, native metrics, or incomplete coverage."
   },
   "services": [
     {
@@ -46,7 +46,7 @@
       "native_production_implementation": "macel94/belacca-gitops:clusters/belacca-production/native-applications.yaml (source: macel94/francesco-belacca-site:deploy)",
       "journey": "Fetch the canonical portfolio HTTPS /health endpoint and homepage from outside native production; aliases are routing diagnostics and do not create extra SLO denominators.",
       "numerator": "Hourly slots where /health returns the expected HTTP 200/ok result and the canonical homepage returns the expected successful portfolio response.",
-      "denominator": "All 720 expected hourly slots for the rolling 30-day window.",
+      "denominator": "Good observed slots divided by good plus bad observed slots until the evidence spans 30 days; thereafter the latest rolling 720 hourly slots, with unknown coverage shown separately.",
       "good_observation": "The complete portfolio health and homepage journey passes after the source retry policy.",
       "bad_observation": "A valid hourly observation exists, but one or more critical portfolio health/homepage checks fail after retries.",
       "unknown_observation": "The hourly slot is absent, malformed, stale, duplicated ambiguously, missing a required component, or otherwise cannot be classified from sanitized evidence.",
@@ -68,7 +68,7 @@
       "native_production_implementation": "macel94/belacca-gitops:clusters/belacca-production/native-applications.yaml, Kustomization path ./k8s/overlays/native-staging (live native-production compatibility path), sourced from macel94/cloudnativepong",
       "journey": "Fetch the public homepage and health endpoint, create and join a room, establish two unique WebSocket-compatible players, observe playing state, and observe cleanup after disconnect.",
       "numerator": "Hourly slots where every critical homepage, health, room create/join, player assignment, playing-state, and cleanup stage passes.",
-      "denominator": "All 720 expected hourly slots for the rolling 30-day window.",
+      "denominator": "Good observed slots divided by good plus bad observed slots until the evidence spans 30 days; thereafter the latest rolling 720 hourly slots, with unknown coverage shown separately.",
       "good_observation": "The complete public Pong journey passes after the source retry policy, including cleanup; native WebTransport is optional and is not silently substituted for the WebSocket-compatible path.",
       "bad_observation": "A valid hourly observation exists, but any critical Pong journey stage fails after retries.",
       "unknown_observation": "The hourly slot is absent, malformed, stale, duplicated ambiguously, missing a required stage, or otherwise cannot be classified from sanitized evidence.",
@@ -90,7 +90,7 @@
       "native_production_implementation": "macel94/belacca-gitops:clusters/belacca-production/analytics",
       "journey": "Fetch public /status and make the fixed harmless same-origin /count collector request; /count.js is a supporting diagnostic, not a separate SLO denominator.",
       "numerator": "Hourly slots where /status succeeds and the harmless /count collector probe succeeds.",
-      "denominator": "All 720 expected hourly slots for the rolling 30-day window.",
+      "denominator": "Good observed slots divided by good plus bad observed slots until the evidence spans 30 days; thereafter the latest rolling 720 hourly slots, with unknown coverage shown separately.",
       "good_observation": "The analytics status and harmless collector journey passes after the source retry policy.",
       "bad_observation": "A valid hourly observation exists, but /status or /count fails after retries.",
       "unknown_observation": "The hourly slot is absent, malformed, stale, duplicated ambiguously, missing a required component, or otherwise cannot be classified from sanitized evidence.",
@@ -123,17 +123,17 @@
     }
   ],
   "error_budget_policy": {
-    "calculation": "For a complete valid window, allowed bad slots = 720 * (1 - 0.99) = 7.2; consumed slots are classified bad slots; unknown slots do not consume or refill budget but prevent a reportable numeric result.",
+    "calculation": "Before 30 days, current budget context uses observed slots; after 30 days, allowed bad slots = 720 * (1 - 0.99) = 7.2 in the latest rolling window. unknown slots do not consume or refill budget and remain visible in coverage.",
     "states": [
       {
         "state": "normal-delivery",
-        "condition": "Complete valid window, no active user-impacting incident, no measurement incident, and consumed bad slots < 3.6 (less than 50% of budget).",
+        "condition": "Complete valid 30-day window, no active user-impacting incident, no measurement incident, and consumed bad slots < 3.6 (less than 50% of budget).",
         "release_action": "Normal reviewed delivery is allowed. Keep ordinary testing, rollback readiness, and evidence review; do not represent the policy as an SLA."
       },
       {
         "state": "caution-review",
-        "condition": "Complete valid window with 3.6 <= consumed bad slots < 7.2, or any incomplete/unknown/stale measurement window without an active user-impacting incident.",
-        "release_action": "The service owner and reviewer must assess reliability risk before non-trivial delivery. Prefer small, reversible, observable changes; repair evidence gaps before making a numeric claim. Routine emergency response remains allowed."
+        "condition": "Complete valid 30-day window with 3.6 <= consumed bad slots < 7.2, or any incomplete/unknown/stale measurement window without an active user-impacting incident.",
+        "release_action": "The service owner and reviewer must assess reliability risk before non-trivial delivery. Prefer small, reversible, observable changes; repair evidence gaps before claiming the complete rolling 30-day objective. Routine emergency response remains allowed."
       },
       {
         "state": "reliability-first",
@@ -145,7 +145,7 @@
   },
   "evidence_boundaries": {
     "public_status": "status.json is a fresh sanitized communication artifact. It describes current observed status and unknown fallback; it is not an SLO calculation, durable availability proof, or paging. It is not a paging system.",
-    "slo_evidence": "slo.json and its history are durable sanitized SLO evidence for internal engineering review, not an availability measurement by themselves. Numeric values are withheld until the complete valid 720-slot window exists; they are not a public uptime claim.",
+    "slo_evidence": "slo.json and its history are durable sanitized SLO evidence for internal engineering review, not an availability measurement by themselves. Current measured values use valid observed good/bad slots, with coverage shown; the latest complete rolling 720-slot window is the stronger 30-day scope. It is not a public uptime claim.",
     "paging": "Paging is a separate actionable-alert capability. Status publication does not page, native Prometheus diagnostics do not establish the public SLI, and paging is not claimed until alert ownership, burn-rate thresholds, routing, and delivery are validated.",
     "privacy": "Evidence must remain sanitized: no credentials, tokens, cookies, room IDs, player names, addresses, response bodies, or unredacted private telemetry."
   },

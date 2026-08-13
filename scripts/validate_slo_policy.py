@@ -74,8 +74,8 @@ def validate_measurement(measurement: object) -> None:
         require_string(measurement[field], f"measurement.{field}")
     if "never count as good" not in measurement["unknown_policy"]:
         fail("unknown policy must not count unknown slots as good")
-    if "prevents a numeric claim" not in measurement["unknown_policy"]:
-        fail("unknown policy must fail closed for numeric claims")
+    if "coverage" not in measurement["unknown_policy"] or "cannot improve" not in measurement["unknown_policy"]:
+        fail("unknown policy must preserve coverage context without improving the measured level")
 
 
 def validate_service(service: object, index: int) -> None:
