@@ -27,6 +27,44 @@ process, not an automation or approval system.
   appropriate private escalation path while retaining only sanitized
   references here.
 
+## Start an incident without ad hoc formatting
+
+Use the checked-in local writer to create the canonical JSON and Markdown
+record. It creates a declared record, assigns all four roles (temporarily
+combining roles is allowed), and refuses to overwrite an existing incident:
+
+```bash
+./scripts/incident-record.sh start \\
+  --id INCIDENT-YYYYMMDD-SHORT \\
+  --title 'short sanitized title' \\
+  --severity SEV-3 \\
+  --commander 'role or handle' \\
+  --operations 'role or handle' \\
+  --communications 'role or handle' \\
+  --planning 'role or handle'
+```
+
+The command is local-only: it does not contact GitHub, the cluster, Flux, or a
+pager. Review the generated Markdown, then attach a bounded collector bundle
+by source ID and UTC timestamp without copying output:
+
+```bash
+./scripts/incident-record.sh attach-bundle \\
+  --record artifacts/incidents/incident-INCIDENT-YYYYMMDD-SHORT.json \\
+  --bundle /path/to/reviewed-incident-bundle.json
+./scripts/incident-record.sh validate \\
+  --record artifacts/incidents/incident-INCIDENT-YYYYMMDD-SHORT.json
+```
+
+The **Incident Commander is the single writer** of the canonical record. Other
+responders submit sanitized observations, decisions, and evidence references to
+the IC; the Planning/Follow-up Lead may edit only when the IC explicitly hands
+off that writer responsibility, recording the handoff in the timeline. The
+record is not a chat transcript, approval, or mutation mechanism. Production
+changes remain human-approved, reviewed, tested where possible, and GitOps-only.
+The JSON contract is [`incident-record.schema.json`](incident-record.schema.json)
+and the follow-up issue process is [`follow-up-issues.md`](follow-up-issues.md).
+
 ## Lifecycle and minimum operating rules
 
 1. **Detect and declare.** Confirm the symptom with an independent observation
@@ -56,7 +94,8 @@ process, not an automation or approval system.
 7. **Learn.** Write the postmortem when a trigger below applies. Review it
    with the involved roles, give each follow-up one owner and validation
    criterion, and close only when the review and follow-up disposition are
-   recorded.
+   recorded. Create one GitHub issue per follow-up using the required owner,
+   due date/TBD reason, and validation-evidence fields.
 
 For a small incident one person may temporarily hold multiple roles, but the
 record must name the combination and the next handoff. A responder may be the
@@ -128,7 +167,7 @@ private companion record with only a sanitized reference here.
 
 A handoff is a timeline event, not merely a changed name: record outgoing and
 incoming roles, UTC timestamp, state/impact, active actions, risks, next update,
-and acknowledgement.
+and acknowledgement. It also records who now owns the single-writer role.
 
 ## Sanitized incident-state template
 
@@ -204,6 +243,27 @@ Close only when all applicable items are true:
 - [ ] IC and Planning/Follow-up Lead reviewed closure.
 
 <!-- TEMPLATE:INCIDENT-STATE:END -->
+
+## Postmortem review and closure checklist
+
+The author must keep the document in `draft` until the review is complete. The
+reviewer checks that detection, user/service impact, mitigation, recovery or
+its limitation, timeline, evidence linkage, contributing conditions, and
+follow-up depth are present. The reviewer also confirms that the document is
+blameless, sanitized, and does not expose player data or private telemetry.
+
+Close a reviewed postmortem only when:
+
+- [ ] the incident-state record is linked and the trigger decision is explicit;
+- [ ] every material timeline claim has a source ID and evidence timestamp, or
+      is explicitly labeled a human report/unknown;
+- [ ] impact, detection, mitigation, recovery, and monitoring are separately
+      described without turning a snapshot into an SLO claim;
+- [ ] hypotheses are labeled and unsupported causes are not presented as fact;
+- [ ] each follow-up has exactly one owner, due date/TBD reason, and validation evidence, plus a GitHub issue link;
+- [ ] involved IC/OL/CL/PFL roles reviewed the draft and publication audience
+      is recorded; and
+- [ ] the closure decision and reviewer UTC timestamp are recorded.
 
 ## Blameless postmortem template
 
@@ -288,7 +348,25 @@ validation condition. Follow-ups propose work; they are not approvals.
 
 <!-- TEMPLATE:POSTMORTEM:END -->
 
-## Completed sanitized example (not a production incident)
+## Completed sanitized example: controlled game-day rehearsal
+
+The completed example is [`2026-08-10-native-failure-game-day.md`](postmortems/2026-08-10-native-failure-game-day.md).
+It is deliberately classified as a **fail-closed game-day/tabletop rehearsal**:
+the approved native failure-drill plans ran, detected unsafe preconditions, and
+stopped before mutation. The repository's pinned execution status confirms that
+no scenario reached cordon, drain, reboot, or uncordon, so no runtime recovery or
+P95 result is claimed. This is a completed exercise and reviewed postmortem,
+not a fabricated production incident.
+
+It links detection (preflight gates), impact (none caused/observed), mitigation
+(fail closed before mutation), recovery limitation (not measured), and
+follow-up issue contract/ownership. F1–F3 are intentionally open until an
+operator can complete the separately approved runtime prerequisites.
+
+## Historical disposable baseline example
+
+The following record is retained as a limitation example, not a completed
+postmortem or game-day. It must not be used as evidence of incident recovery.
 
 **Classification: documentation-only SEV-4/non-incident example based on the
 recent disposable capacity-baseline definition.** The parent workspace has one executed disposable run with an uploaded artifact,
@@ -335,9 +413,9 @@ not prove the public availability SLO or the six-minute recovery objective.
   resource-pressure tests, and one-fault-at-a-time recovery drills are still
   required. The six-minute objective is **not proven**.
 
-This example demonstrates how to record absence of evidence without converting
-an implementation plan into an operational claim. Replace it with a real,
-human-reviewed record if a suitable isolated exercise is later performed.
+This historical baseline demonstrates how to record absence of evidence without
+converting an implementation plan into an operational claim. It is not a
+substitute for the reviewed game-day postmortem above.
 
 ## References
 

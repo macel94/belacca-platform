@@ -10,7 +10,7 @@ class ProductionValidationContractTests(unittest.TestCase):
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
         required = (
             "NATIVE_PRODUCTION_SOURCE",
-            "NATIVE_PONG_SOURCE ?= cloudnativepong/k8s/overlays/native-production",
+            "NATIVE_PONG_SOURCE ?= cloudnativepong/k8s/overlays/native-staging",
             "NATIVE_SITE_SOURCE ?= francesco-belacca-site/deploy",
             "$(NATIVE_PRODUCTION_SOURCE)/flux-system",
             "$(NATIVE_PRODUCTION_SOURCE)/secrets",
@@ -43,24 +43,16 @@ class ProductionValidationContractTests(unittest.TestCase):
         catalog = (ROOT / "belacca-gitops/catalog/services.json").read_text(
             encoding="utf-8"
         )
-        self.assertIn("path: ./k8s/overlays/native-production", flux)
-        self.assertNotIn("native-staging", flux)
-        self.assertNotIn("native-staging", catalog)
+        self.assertIn("path: ./k8s/overlays/native-staging", flux)
+        self.assertIn("native production target", catalog)
         self.assertNotIn("vmi3474918", catalog)
         self.assertIn('"cluster": "belacca-native"', catalog)
 
-    def test_native_overlay_is_renderable_and_historical_tree_is_marked(self):
-        native = ROOT / "cloudnativepong/k8s/overlays/native-production"
+    def test_native_application_overlay_is_renderable_and_retired_tree_is_absent(self):
+        native = ROOT / "cloudnativepong/k8s/overlays/native-staging"
         self.assertTrue((native / "kustomization.yaml").is_file())
-        self.assertTrue((native / "api-native-production.yaml").is_file())
-        self.assertFalse(
-            (ROOT / "cloudnativepong/k8s/overlays/native-staging").exists()
-        )
-        marker = (
-            ROOT / "belacca-gitops/clusters/vmi3474918/HISTORICAL-REFERENCE.md"
-        ).read_text(encoding="utf-8")
-        self.assertIn("not** native production", marker)
-        self.assertIn("not** a Flux deployment target", marker)
+        self.assertTrue((native / "api-native-staging.yaml").is_file())
+        self.assertFalse(any((ROOT / "belacca-gitops/clusters").glob("*/HISTORICAL-REFERENCE.md")))
 
 
 if __name__ == "__main__":
