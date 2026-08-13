@@ -112,12 +112,12 @@ controlled-drill evidence contract and fail-closed operator runbook are in
 [`docs/controlled-drill-recovery.md`](docs/controlled-drill-recovery.md); its
 validator never executes a drill or targets the live public endpoint. A short
 disposable baseline or evidence snapshot cannot prove either objective. The
-policy distinguishes public status, durable SLO evidence, and paging, and keeps
-protected operator surfaces unconfigured until an authenticated measurement
-path exists. Follow-up work is tracked as one GitHub issue per action using
+policy distinguishes public status, durable SLO evidence, and paging. In-cluster
+Alertmanager now routes Flux and Prometheus signals to Telegram; protected
+operator surfaces still await an authenticated measurement path. Follow-up work is tracked as one GitHub issue per action using
 [`docs/follow-up-issues.md`](docs/follow-up-issues.md).
 
-The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
+The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown with an “awaiting fresh evidence” explanation. Reported uptime is calculated from good and bad critical observations and includes its observation count; no page response, build identifier, or empty incident list is treated as uptime evidence.
 
 ## Supported platform sites
 
