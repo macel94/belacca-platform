@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://belacca.com/schemas/incident-record.v1.json",
+  "title": "Belacca sanitized incident record",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "record_id", "title", "state", "severity", "declared_at", "roles", "record_control", "evidence", "timeline", "safety"],
+  "properties": {
+    "schema_version": {"const": "belacca.incident-record.v1"},
+    "record_id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,63}$"},
+    "title": {"type": "string", "minLength": 1},
+    "state": {"enum": ["declared", "active", "monitoring", "resolved", "closed"]},
+    "severity": {"enum": ["SEV-1", "SEV-2", "SEV-3", "SEV-4"]},
+    "declared_at": {"type": "string", "format": "date-time"},
+    "roles": {
+      "type": "object",
+      "required": ["incident_commander", "operations_lead", "communications_lead", "planning_follow_up_lead"],
+      "properties": {
+        "incident_commander": {"type": "string", "minLength": 1},
+        "operations_lead": {"type": "string", "minLength": 1},
+        "communications_lead": {"type": "string", "minLength": 1},
+        "planning_follow_up_lead": {"type": "string", "minLength": 1}
+      }
+    },
+    "record_control": {
+      "type": "object",
+      "required": ["single_writer_role", "direct_cluster_mutation_allowed", "human_approval_required", "gitops_only_production_changes"],
+      "properties": {
+        "single_writer_role": {"enum": ["incident_commander", "operations_lead", "communications_lead", "planning_follow_up_lead"]},
+        "direct_cluster_mutation_allowed": {"const": false},
+        "human_approval_required": {"const": true},
+        "gitops_only_production_changes": {"const": true}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["bundle_ids", "sources"],
+      "properties": {
+        "bundle_ids": {"type": "array", "items": {"type": "string"}},
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_id", "evidence_timestamp", "status", "completeness", "observation"],
+            "properties": {
+              "source_id": {"type": "string", "minLength": 1},
+              "evidence_timestamp": {"type": "string", "format": "date-time"},
+              "status": {"enum": ["ok", "failed", "unavailable", "timed_out", "truncated", "incomplete"]},
+              "completeness": {"enum": ["complete", "incomplete"]},
+              "observation": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["at", "event", "actor_role", "evidence_refs"],
+        "properties": {
+          "at": {"type": "string", "format": "date-time"},
+          "event": {"type": "string", "minLength": 1},
+          "actor_role": {"type": "string", "minLength": 1},
+          "evidence_refs": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "required": ["sanitized", "raw_evidence_embedded"],
+      "properties": {
+        "sanitized": {"const": true},
+        "raw_evidence_embedded": {"const": false}
+      }
+    }
+  }
+}

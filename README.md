@@ -76,11 +76,16 @@ All production changes are reviewed GitOps changes through the native
 incident lifecycle: declare early, assign an Incident Commander (IC),
 Operations Lead, Communications Lead, and Planning/Follow-up Lead, maintain a
 UTC timeline with evidence source IDs/timestamps, hand off explicitly, recover,
-and close against written criteria. It defines SEV-1 through SEV-4 and
-objective postmortem triggers for user-facing critical failure, monitoring
-failure, data integrity/security events, a missed approved recovery objective,
-and repeat/noisy incidents. It also contains sanitized incident-state and
-blameless postmortem templates.
+and close against written criteria. The local-only
+[`scripts/incident-record.sh`](scripts/incident-record.sh) starts and validates
+canonical JSON/Markdown records, attaches source IDs/timestamps without raw
+output, and enforces the IC single-writer and GitOps-only change boundary. The
+lifecycle defines SEV-1 through SEV-4 and objective postmortem triggers for
+user-facing critical failure, monitoring failure, data integrity/security
+events, a missed approved recovery objective, and repeat/noisy incidents. It
+also contains sanitized incident-state and blameless postmortem templates,
+review/closure criteria, and the completed fail-closed game-day postmortem at
+[`docs/postmortems/2026-08-10-native-failure-game-day.md`](docs/postmortems/2026-08-10-native-failure-game-day.md).
 
 [`scripts/incident-evidence.sh`](scripts/incident-evidence.sh) is an explicitly
 invoked, bounded, read-only collector for selected kubectl/Flux/workspace status
@@ -109,7 +114,8 @@ validator never executes a drill or targets the live public endpoint. A short
 disposable baseline or evidence snapshot cannot prove either objective. The
 policy distinguishes public status, durable SLO evidence, and paging, and keeps
 protected operator surfaces unconfigured until an authenticated measurement
-path exists.
+path exists. Follow-up work is tracked as one GitHub issue per action using
+[`docs/follow-up-issues.md`](docs/follow-up-issues.md).
 
 The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 

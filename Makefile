@@ -1,4 +1,4 @@
-.PHONY: init status evidence-test drill-test drill-validate policy-test site-test status-test pong-test manifests manifests-native-edge validate evidence-bundle
+.PHONY: init status evidence-test incident-record-test drill-test drill-validate policy-test site-test status-test pong-test manifests manifests-native-edge validate evidence-bundle
 
 SHELL := /usr/bin/env bash
 
@@ -30,6 +30,9 @@ status:
 	./scripts/status.sh
 
 evidence-test:
+	python3 -m unittest discover -s tests -v
+
+incident-record-test:
 	python3 -m unittest discover -s tests -v
 
 drill-test:
