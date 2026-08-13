@@ -6,7 +6,7 @@ NATIVE_PRODUCTION_SOURCE ?= belacca-gitops/clusters/belacca-production
 NATIVE_EDGE_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/edge
 NATIVE_ROUTING_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/routing
 NATIVE_OBSERVABILITY_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/observability
-NATIVE_PONG_SOURCE ?= cloudnativepong/k8s/overlays/native-production
+NATIVE_PONG_SOURCE ?= cloudnativepong/k8s/overlays/native-staging
 NATIVE_SITE_SOURCE ?= francesco-belacca-site/deploy
 NATIVE_KUSTOMIZATIONS := \
 	$(NATIVE_PRODUCTION_SOURCE) \
