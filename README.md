@@ -44,7 +44,10 @@ make init
 
 ```bash
 make status       # show parent and submodule branches/commits
-make evidence-test # run bounded evidence-tool tests
+make evidence-test # run bounded evidence-tool and contract tests
+make drill-test   # run controlled-drill contract tests
+make drill-validate RECORD=path/to/record.json # validate sanitized drill evidence (read-only)
+make policy-test   # validate the internal SLO/error-budget policy and tests
 make evidence-bundle # explicitly collect local evidence (read-only)
 make update       # fetch and fast-forward submodules to their configured main branches
 make validate     # run application tests and render Kubernetes manifests
@@ -52,54 +55,20 @@ make site-test    # portfolio tests
 make pong-test    # Go tests, race tests, and vet
 make manifests    # validate and render Pong/site plus native production Kustomizations
 make manifests-native-edge # compatibility check for native production and edge renders
-make manifests-historical  # explicitly render retired old-production manifests for audit
 ```
 
-## Migration state
+## Native production state
 
-The migration is now cut over to native k3s:
+Native production is the only maintained platform plane: the three-server native
+k3s cluster owns public application traffic, native Flux owns reconciliation,
+and Longhorn-backed single-writer state is protected by the native runbooks.
+Cloudflare DNS-only records for application hosts contain `.73`, `.41`, and
+`.42`; `k3s-api.belacca.com` uses `.41` and `.42`.
 
-- **native-production:** the three-server native k3s cluster owns public
-  application traffic. Cloudflare DNS-only A records for all application
-  hostnames contain `.73`, `.41`, and `.42`; `k3s-api.belacca.com` remains
-  `.41` and `.42` only.
-- Native Flux, Traefik, cert-manager, TLS, Pong, portfolio, GoatCounter,
-  Dex, Headlamp, and Flux Web are healthy. Pong, GoatCounter, and Dex SQLite
-  state was quiesced, integrity-checked, restored into Longhorn-backed RWO
-  PVCs, and verified in native workloads.
-- **retired-old-production:** the former `k3d-pong` Podman cluster and its
-  auto-start unit were removed after the controlled handoff. Its local PVCs are
-  not a rollback target; external backup provisioning remains an accepted
-  follow-up risk.
-
-The final operational state and accepted risks are tracked in the host-level migration plan and the GitOps ownership rules below.
-The host-level companion plan is in
-[`belacca-infrastructure/docs/MIGRATION-PLAN.md`](belacca-infrastructure/docs/MIGRATION-PLAN.md);
-[`belacca-gitops/MIGRATION.md`](belacca-gitops/MIGRATION.md) documents
-Kubernetes ownership and cutover rules.
-
-Native production is the live production plane, **not a development sandbox**.
-Do not use it for iterative source edits, temporary image patches, or
-experiments. For the fast development model, read
-[`docs/development-loop.md`](docs/development-loop.md). Use local process mode
-or an explicitly disposable, isolated development environment until a separate
-warm development plane exists. GitOps is reserved for reviewed promotion.
-
-`make update` changes the checked-out submodule commits and stages the parent
-Gitlinks, but does not commit or push. Review the resulting parent diff before
-publishing a new workspace pin.
-
-Dependabot is configured daily in every public repository for each supported
-ecosystem present: Git submodules and GitHub Actions in this workspace,
-GitHub Actions in GitOps and infrastructure, npm in status, npm/Docker in the
-portfolio, and Go modules/npm/Docker/GitHub Actions in Pong. The infrastructure
-repository has no package, Docker, or language-module manifest for Dependabot
-to update; its pinned k3s installer version and Debian package set remain
-explicit infrastructure inputs rather than Dependabot-supported ecosystems.
-
-The helper scripts never stage or commit files inside a child repository. A
-working tree such as `cloudnativepong/ops/` is intentionally reported but left
-untouched.
+Native production is not a development sandbox. Use local process mode or an
+explicitly disposable isolated environment for development and experiments.
+All production changes are reviewed GitOps changes through the native
+`belacca-production` tree.
 
 ## Incident lifecycle, evidence, and public status
 
@@ -132,12 +101,21 @@ or collector: only a human can interpret evidence, declare/close an incident,
 approve an action, or communicate externally. Production changes—including emergency
 rollback or traffic changes—remain reviewed, human-approved, tested where
 possible, and GitOps-only through the appropriate repository and Flux path.
-The public objective is 99% availability over 30 days per service with no SLA;
-the separate controlled-drill objective is P95 recovery under six minutes. A
-short disposable baseline or evidence snapshot cannot prove either objective.
-Follow-up work is tracked as one GitHub issue per action using
-[`docs/follow-up-issues.md`](docs/follow-up-issues.md); the completed game-day
-issues remain open until their validation evidence is recorded.
+The internal SLO and error-budget decision policy is
+[`docs/slo-error-budget-policy.md`](docs/slo-error-budget-policy.md), with the
+machine-readable contract in [`docs/slo-policy.json`](docs/slo-policy.json) and
+the target/live-capability checklist in
+[`docs/slo-review-checklist.md`](docs/slo-review-checklist.md). The public
+objective is 99% availability over 30 days per service with no SLA; the
+separate controlled-drill objective is P95 recovery under six minutes. The
+controlled-drill evidence contract and fail-closed operator runbook are in
+[`docs/controlled-drill-recovery.md`](docs/controlled-drill-recovery.md); its
+validator never executes a drill or targets the live public endpoint. A short
+disposable baseline or evidence snapshot cannot prove either objective. The
+policy distinguishes public status, durable SLO evidence, and paging, and keeps
+protected operator surfaces unconfigured until an authenticated measurement
+path exists. Follow-up work is tracked as one GitHub issue per action using
+[`docs/follow-up-issues.md`](docs/follow-up-issues.md).
 
 The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
@@ -158,8 +136,7 @@ protected operator surfaces or aliases, not public applications.
 
 ## Safety model
 
-- The former `k3d-pong` cluster is retired; do not recreate it from this
-  workspace. Native k3s is production; do not use it as a development sandbox.
+- Native k3s is production; do not use it as a development sandbox.
 - Do not delete `pong-api-data`, its PV, or `kube-system/traefik-acme`.
 - Flux ownership and migration rules are documented in
   `belacca-gitops/MIGRATION.md`.

@@ -393,7 +393,7 @@ not prove the public availability SLO or the six-minute recovery objective.
 - **Roles:** IC/OL/CL/PFL are `not assigned` because this was an automated
   disposable baseline, not an incident or failure drill.
 - **Impact:** no production impact, public-route traffic, production PVC access,
-  player data, or user data is evidenced. The run used a temporary k3d cluster
+  player data, or user data is evidenced. The run used an explicitly isolated disposable test environment
   and loopback gateway only.
 - **Observed result:** 3/3 bounded journeys passed with no failure codes;
   health p95 3ms, create p95 2039ms, join p95 5ms, WebSocket p95 38ms, and
