@@ -1,4 +1,4 @@
-.PHONY: init status evidence-test site-test status-test pong-test manifests manifests-native-edge manifests-historical validate evidence-bundle
+.PHONY: init status evidence-test site-test status-test pong-test manifests manifests-native-edge validate evidence-bundle
 
 SHELL := /usr/bin/env bash
 
@@ -6,8 +6,6 @@ NATIVE_PRODUCTION_SOURCE ?= belacca-gitops/clusters/belacca-production
 NATIVE_EDGE_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/edge
 NATIVE_ROUTING_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/routing
 NATIVE_OBSERVABILITY_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/observability
-HISTORICAL_PRODUCTION_SOURCE ?= belacca-gitops/clusters/vmi3474918
-HISTORICAL_ROUTING_SOURCE ?= $(HISTORICAL_PRODUCTION_SOURCE)/routing
 
 init:
 	git submodule update --init --recursive
@@ -56,13 +54,6 @@ manifests:
 	kubectl kustomize "$(NATIVE_OBSERVABILITY_SOURCE)" >/tmp/belacca-platform-native-observability.yaml
 	@echo 'Rendered application and native production manifests:'
 	@wc -l /tmp/belacca-platform-{pong,site,native-production,native-routing,native-observability}.yaml
-
-# Explicit audit-only check for the retired old-production GitOps tree.
-manifests-historical:
-	kubectl kustomize "$(HISTORICAL_PRODUCTION_SOURCE)" >/tmp/belacca-platform-historical-gitops.yaml
-	kubectl kustomize "$(HISTORICAL_ROUTING_SOURCE)" >/tmp/belacca-platform-historical-routing.yaml
-	@echo 'Rendered historical/retired manifests (not live production):'
-	@wc -l /tmp/belacca-platform-{historical-gitops,historical-routing}.yaml
 
 # Compatibility check for callers that specifically validate the native edge.
 # The native production root is rendered here as well; this target never falls

@@ -35,7 +35,7 @@ The workspace currently has:
   Pong, portfolio, analytics, Dex, Headlamp, and Flux Web;
 - direct Cloudflare DNS round-robin across `.73`, `.41`, and `.42` for
   application hosts, without health-aware
-  withdrawal; the former `k3d-pong` runtime is retired;
+  withdrawal; native production is the only maintained production plane;
 - GitHub Actions that build and test images on hosted runners;
 - Flux polling the application sources and reconciling production manifests;
 - no separate persistent `pong-dev` cluster or service-interception workflow yet.
@@ -51,11 +51,9 @@ The migration is complete; host preparation and native k3s prerequisites live in
 ownership and Flux cutover rules live in
 [`belacca-gitops/MIGRATION.md`](../belacca-gitops/MIGRATION.md).
 
-On the current host, `kubectl` can reach the existing cluster, but the installed
-`k3d` command currently cannot list it because it is trying to use Docker while
-the cluster is managed through Podman. Fix and verify the Podman/Docker API
-configuration before automating any k3d lifecycle operation. Do not work around
-that failure by pointing scripts at the public cluster.
+Native production is reached through the `belacca-native` context. Do not use
+production as a development sandbox; use local mode or an explicitly disposable
+isolated environment for Kubernetes work.
 
 ## Loop 1: local process development
 
@@ -174,15 +172,15 @@ Develop game logic in local mode first. For Kubernetes-specific room changes:
 A future persistent development environment should have all of these explicit
 boundaries:
 
-- context: `k3d-pong-dev`;
+- context: an explicitly generated disposable development context;
 - namespace: `pong-dev`;
 - separate SQLite database and PVC, if persistence is needed;
 - separate local registry and development image names;
 - development origins and host ports;
 - no production Flux ownership;
 - no access to native-production resources or production secrets;
-- scripts that fail closed unless the selected context is `k3d-pong-dev` or an
-  explicitly generated disposable context;
+- scripts that fail closed unless the selected context is explicitly generated
+  for the disposable development run;
 - an easy reset path that cannot delete production resources.
 
 The development cluster should be created once, kept warm, and reused. Cluster
@@ -212,7 +210,7 @@ The following are release operations and must not be in the per-edit loop:
 - running supply-chain scans after every local edit;
 - creating a new k3d cluster for every integration test;
 - reinstalling Playwright and Chromium for every test invocation;
-- testing against the public `k3d-pong` cluster.
+- testing against native production during routine development.
 
 Production feedback can still be improved independently with BuildKit layer
 caching, parallel or shared image builds, path-based CI selection, cached
