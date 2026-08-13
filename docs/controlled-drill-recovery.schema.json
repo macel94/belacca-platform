@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/macel94/belacca-platform/main/docs/controlled-drill-recovery.schema.json",
+  "title": "Belacca controlled-drill recovery evidence",
+  "description": "Sanitized evidence for approved controlled recovery drills. This schema records evidence; it cannot authorize or execute a drill.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "sanitized",
+    "record_type",
+    "objective",
+    "environment",
+    "safety",
+    "repetitions",
+    "evaluation",
+    "limitations"
+  ],
+  "properties": {
+    "$schema": { "const": "https://raw.githubusercontent.com/macel94/belacca-platform/main/docs/controlled-drill-recovery.schema.json" },
+    "schema_version": { "const": "belacca.controlled-drill-evidence.v1" },
+    "sanitized": { "const": true },
+    "record_type": { "const": "controlled_drill_batch" },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "availability_slo", "recovery_target_seconds", "percentile", "comparison", "minimum_comparable_repetitions"],
+      "properties": {
+        "id": { "const": "belacca-controlled-drill-recovery-v1" },
+        "availability_slo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target_percent", "window", "sla", "separate_from_recovery_objective"],
+          "properties": {
+            "target_percent": { "const": "99%" },
+            "window": { "const": "rolling_30d" },
+            "sla": { "const": false },
+            "separate_from_recovery_objective": { "const": true }
+          }
+        },
+        "recovery_target_seconds": { "const": 360 },
+        "percentile": { "const": "P95" },
+        "comparison": { "const": "strictly_under" },
+        "minimum_comparable_repetitions": { "const": 3 }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "environment_reference", "production"],
+      "properties": {
+        "scope": { "enum": ["native-production-edge-control-plane-application", "isolated-capacity-chaos"] },
+        "environment_reference": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "production": { "type": "boolean" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approved", "approval", "bounded", "public_endpoint_targeted", "target_reference", "mutation_performed"],
+      "properties": {
+        "approved": { "const": true },
+        "approval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["approver_role", "approved_at", "change_reference"],
+          "properties": {
+            "approver_role": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "approved_at": { "type": "string", "format": "date-time" },
+            "change_reference": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        },
+        "bounded": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fault_scope", "abort_conditions", "rollback_or_cleanup_plan"],
+          "properties": {
+            "fault_scope": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "abort_conditions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+            "rollback_or_cleanup_plan": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        },
+        "public_endpoint_targeted": { "const": false },
+        "target_reference": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "mutation_performed": { "type": "boolean" }
+      }
+    },
+    "repetitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "comparability_key", "fault_class", "start", "stop", "duration_seconds", "recovery_status", "recovery_checks", "impact", "runbook_revision", "follow_up_issue"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^drill-[A-Za-z0-9._-]+$" },
+          "comparability_key": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "fault_class": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "start": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "timestamp", "evidence_reference"],
+            "properties": {
+              "kind": { "enum": ["fault_injection", "confirmed_actionable_failure_alert"] },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "evidence_reference": { "type": "string", "minLength": 1, "maxLength": 200 }
+            }
+          },
+          "stop": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["timestamp", "evidence_reference"],
+            "properties": {
+              "timestamp": { "type": "string", "format": "date-time" },
+              "evidence_reference": { "type": "string", "minLength": 1, "maxLength": 200 }
+            }
+          },
+          "duration_seconds": { "type": "number", "exclusiveMinimum": 0 },
+          "recovery_status": { "enum": ["pass", "fail"] },
+          "recovery_checks": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "result", "observed_at", "evidence_reference", "exact_check"],
+              "properties": {
+                "id": { "enum": ["health", "api-crud", "canonical-pong-two-player-journey", "cleanup"] },
+                "result": { "enum": ["pass", "fail", "not_applicable"] },
+                "observed_at": { "type": "string", "format": "date-time" },
+                "evidence_reference": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "exact_check": { "type": "string", "minLength": 1, "maxLength": 500 },
+                "not_applicable_reason": { "type": "string", "minLength": 1, "maxLength": 300 }
+              }
+            }
+          },
+          "impact": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "runbook_revision": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "follow_up_issue": { "type": ["string", "null"], "maxLength": 300 }
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comparable_repetition_count", "p95_method", "p95_duration_seconds", "target_status", "claimable"],
+      "properties": {
+        "comparable_repetition_count": { "type": "integer", "minimum": 0 },
+        "p95_method": { "const": "nearest_rank" },
+        "p95_duration_seconds": { "type": ["number", "null"] },
+        "target_status": { "enum": ["not_claimed", "pass", "fail"] },
+        "claimable": { "type": "boolean" }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+    }
+  }
+}

@@ -25,7 +25,9 @@ days or three human-actionable alerts in seven days). A human may request one
 at any time. The public objective is 99% availability per service over 30 days
 with no SLA; the separate controlled-drill target is P95 recovery under six
 minutes. Neither is established by this collector or by the disposable
-capacity-baseline example.
+capacity-baseline example. Approved recovery-drill evidence must follow the
+separate [`controlled-drill-recovery.md`](controlled-drill-recovery.md)
+contract; this collector remains observation-only.
 
 ## Use
 

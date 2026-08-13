@@ -116,7 +116,9 @@ highest applicable level and reassess as evidence changes.
 The five-minute threshold is a coordination threshold for this small platform,
 not an SLA. The public objective is 99% availability over a rolling 30-day
 window per service and there is no SLA. A short probe or evidence bundle cannot
-establish that objective.
+establish that objective. The separate controlled-drill recovery contract,
+evidence fields, and P95 calculation are in
+[`controlled-drill-recovery.md`](controlled-drill-recovery.md).
 
 ## Objective postmortem triggers
 
