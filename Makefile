@@ -1,4 +1,4 @@
-.PHONY: init status evidence-test drill-test drill-validate site-test status-test pong-test manifests manifests-native-edge manifests-historical validate evidence-bundle
+.PHONY: init status evidence-test drill-test drill-validate policy-test site-test status-test pong-test manifests manifests-native-edge validate evidence-bundle
 
 SHELL := /usr/bin/env bash
 
@@ -6,8 +6,22 @@ NATIVE_PRODUCTION_SOURCE ?= belacca-gitops/clusters/belacca-production
 NATIVE_EDGE_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/edge
 NATIVE_ROUTING_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/routing
 NATIVE_OBSERVABILITY_SOURCE ?= $(NATIVE_PRODUCTION_SOURCE)/observability
-HISTORICAL_PRODUCTION_SOURCE ?= belacca-gitops/clusters/vmi3474918
-HISTORICAL_ROUTING_SOURCE ?= $(HISTORICAL_PRODUCTION_SOURCE)/routing
+NATIVE_PONG_SOURCE ?= cloudnativepong/k8s/overlays/native-staging
+NATIVE_SITE_SOURCE ?= francesco-belacca-site/deploy
+NATIVE_KUSTOMIZATIONS := \
+	$(NATIVE_PRODUCTION_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/flux-system \
+	$(NATIVE_PRODUCTION_SOURCE)/secrets \
+	$(NATIVE_PRODUCTION_SOURCE)/longhorn \
+	$(NATIVE_EDGE_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/cert-manager \
+	$(NATIVE_PRODUCTION_SOURCE)/tls \
+	$(NATIVE_ROUTING_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/dex \
+	$(NATIVE_PRODUCTION_SOURCE)/analytics \
+	$(NATIVE_OBSERVABILITY_SOURCE) \
+	$(NATIVE_PRODUCTION_SOURCE)/headlamp \
+	$(NATIVE_PRODUCTION_SOURCE)/flux-web
 
 init:
 	git submodule update --init --recursive
@@ -24,6 +38,10 @@ drill-test:
 drill-validate:
 	@test -n "$(RECORD)" || { echo 'Usage: make drill-validate RECORD=path/to/record.json' >&2; exit 2; }
 	python3 scripts/validate_controlled_drill.py "$(RECORD)"
+
+policy-test:
+	python3 scripts/validate_slo_policy.py
+	python3 -m unittest tests.test_slo_policy -v
 
 evidence-bundle:
 	./scripts/incident-evidence.sh collect --format both
@@ -46,9 +64,9 @@ pong-test:
 	cd cloudnativepong && go vet ./...
 
 manifests:
-	@for path in "$(NATIVE_PRODUCTION_SOURCE)" "$(NATIVE_ROUTING_SOURCE)" "$(NATIVE_OBSERVABILITY_SOURCE)"; do \
+	@set -e; for path in $(NATIVE_KUSTOMIZATIONS) "$(NATIVE_PONG_SOURCE)" "$(NATIVE_SITE_SOURCE)"; do \
 		if [ ! -f "$$path/kustomization.yaml" ]; then \
-			echo "Required native production kustomization is absent: $$path/kustomization.yaml" >&2; \
+			echo "Required live production kustomization is absent: $$path/kustomization.yaml" >&2; \
 			exit 1; \
 		fi; \
 	done
@@ -56,24 +74,19 @@ manifests:
 	python3 belacca-gitops/scripts/validate-recovery-contract.py
 	python3 belacca-gitops/scripts/validate-observability.py
 	python3 belacca-gitops/scripts/extract-prometheus-config.py
-	kubectl kustomize cloudnativepong/k8s/overlays/server >/tmp/belacca-platform-pong.yaml
-	kubectl kustomize francesco-belacca-site/deploy >/tmp/belacca-platform-site.yaml
-	kubectl kustomize "$(NATIVE_PRODUCTION_SOURCE)" >/tmp/belacca-platform-native-production.yaml
-	kubectl kustomize "$(NATIVE_ROUTING_SOURCE)" >/tmp/belacca-platform-native-routing.yaml
-	kubectl kustomize "$(NATIVE_OBSERVABILITY_SOURCE)" >/tmp/belacca-platform-native-observability.yaml
-	@echo 'Rendered application and native production manifests:'
-	@wc -l /tmp/belacca-platform-{pong,site,native-production,native-routing,native-observability}.yaml
-
-# Explicit audit-only check for the retired old-production GitOps tree.
-manifests-historical:
-	kubectl kustomize "$(HISTORICAL_PRODUCTION_SOURCE)" >/tmp/belacca-platform-historical-gitops.yaml
-	kubectl kustomize "$(HISTORICAL_ROUTING_SOURCE)" >/tmp/belacca-platform-historical-routing.yaml
-	@echo 'Rendered historical/retired manifests (not live production):'
-	@wc -l /tmp/belacca-platform-{historical-gitops,historical-routing}.yaml
+	@rm -f /tmp/belacca-platform-live-*.yaml
+	@set -e; for path in $(NATIVE_KUSTOMIZATIONS) "$(NATIVE_PONG_SOURCE)" "$(NATIVE_SITE_SOURCE)"; do \
+		name=$$(printf '%s' "$$path" | tr '/.' '__'); \
+		kubectl kustomize "$$path" >"/tmp/belacca-platform-live-$$name.yaml"; \
+		test -s "/tmp/belacca-platform-live-$$name.yaml"; \
+		echo "rendered live production $$path"; \
+	done
+	@echo 'Rendered every live production Kustomization (native root, Flux children, applications, and routing):'
+	@wc -l /tmp/belacca-platform-live-*.yaml
 
 # Compatibility check for callers that specifically validate the native edge.
 # The native production root is rendered here as well; this target never falls
-# back to the retired tree or silently skips a missing native edge.
+# back to another production tree or silently skips a missing native edge.
 manifests-native-edge:
 	@for path in "$(NATIVE_PRODUCTION_SOURCE)" "$(NATIVE_EDGE_SOURCE)"; do \
 		if [ ! -f "$$path/kustomization.yaml" ]; then \
@@ -86,6 +99,6 @@ manifests-native-edge:
 	@echo 'Rendered native production and edge manifests:'
 	@wc -l /tmp/belacca-platform-{gitops-native,edge-native}.yaml
 
-validate: evidence-test drill-test site-test status-test pong-test manifests
+validate: evidence-test drill-test policy-test site-test status-test pong-test manifests
 	git diff --check
 	@echo 'Workspace validation passed.'

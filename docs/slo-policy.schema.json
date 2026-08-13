@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/macel94/belacca-platform/main/docs/slo-policy.schema.json",
+  "title": "Belacca internal SLO and error-budget policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema_version", "policy_id", "status", "owner", "review_cadence", "target", "non_sla", "measurement", "services", "error_budget_policy", "evidence_boundaries", "implementation_links"],
+  "properties": {
+    "$schema": { "const": "./slo-policy.schema.json" },
+    "schema_version": { "const": "belacca.slo-policy.v1" },
+    "policy_id": { "const": "belacca-slo-99-v1" },
+    "status": { "const": "approved-initial-policy" },
+    "owner": { "const": "platform" },
+    "review_cadence": { "type": "string", "minLength": 1 },
+    "target": {
+      "type": "object", "additionalProperties": false,
+      "required": ["availability", "target_percent", "window", "window_hours", "observation_cadence", "error_budget_bad_slots", "claim_rule"],
+      "properties": {
+        "availability": { "const": 0.99 }, "target_percent": { "const": "99%" }, "window": { "const": "rolling 30d" },
+        "window_hours": { "const": 720 }, "observation_cadence": { "const": "1h" }, "error_budget_bad_slots": { "const": 7.2 },
+        "claim_rule": { "type": "string", "minLength": 1 }
+      }
+    },
+    "non_sla": { "type": "string", "minLength": 1 },
+    "measurement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_repository", "source_artifact", "source_history_schema", "source_kind", "attempt_policy", "denominator", "unknown_policy", "window_policy"],
+      "properties": {
+        "source_repository": { "const": "macel94/belacca-status" }, "source_artifact": { "const": "slo.json" },
+        "source_history_schema": { "const": "belacca.observation.v1" }, "source_kind": { "const": "external-durable-synthetic-probe" },
+        "attempt_policy": { "type": "string", "minLength": 1 }, "denominator": { "type": "string", "minLength": 1 },
+        "unknown_policy": { "type": "string", "minLength": 1 }, "window_policy": { "type": "string", "minLength": 1 }
+      }
+    },
+    "services": {
+      "type": "array", "minItems": 4, "maxItems": 4,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "name", "scope", "slo_status", "target_percent", "window", "observation_cadence", "error_budget_bad_slots", "owner", "public_hosts", "measurement_source", "native_production_implementation", "journey", "numerator", "denominator", "good_observation", "bad_observation", "unknown_observation", "review_cadence", "runbook"],
+        "properties": {
+          "id": { "enum": ["portfolio", "pong", "analytics", "operator-surfaces"] }, "name": { "type": "string", "minLength": 1 },
+          "scope": { "enum": ["public", "protected-operator"] }, "slo_status": { "enum": ["proposed", "not_configured", "measured"] },
+          "target_percent": { "const": "99%" }, "window": { "const": "rolling 30d" }, "observation_cadence": { "const": "1h" }, "error_budget_bad_slots": { "const": 7.2 },
+          "enabled": { "type": "boolean" }, "owner": { "const": "platform" }, "public_hosts": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "measurement_source": { "type": ["string", "null"] }, "native_production_implementation": { "type": "string", "minLength": 1 },
+          "journey": { "type": "string", "minLength": 1 }, "numerator": { "type": "string", "minLength": 1 }, "denominator": { "type": "string", "minLength": 1 },
+          "good_observation": { "type": "string", "minLength": 1 }, "bad_observation": { "type": "string", "minLength": 1 }, "unknown_observation": { "type": "string", "minLength": 1 },
+          "activation_rule": { "type": "string", "minLength": 1 }, "review_cadence": { "type": "string", "minLength": 1 }, "runbook": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "error_budget_policy": {
+      "type": "object", "additionalProperties": false, "required": ["calculation", "states", "reentry"],
+      "properties": {
+        "calculation": { "type": "string", "minLength": 1 },
+        "states": {
+          "type": "array", "minItems": 3, "maxItems": 3,
+          "items": { "type": "object", "additionalProperties": false, "required": ["state", "condition", "release_action"], "properties": { "state": { "enum": ["normal-delivery", "caution-review", "reliability-first"] }, "condition": { "type": "string", "minLength": 1 }, "release_action": { "type": "string", "minLength": 1 } } }
+        },
+        "reentry": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidence_boundaries": {
+      "type": "object", "additionalProperties": false, "required": ["public_status", "slo_evidence", "paging", "privacy"],
+      "properties": { "public_status": { "type": "string", "minLength": 1 }, "slo_evidence": { "type": "string", "minLength": 1 }, "paging": { "type": "string", "minLength": 1 }, "privacy": { "type": "string", "minLength": 1 } }
+    },
+    "implementation_links": {
+      "type": "array", "minItems": 3,
+      "items": { "type": "object", "additionalProperties": false, "required": ["repository", "issue", "purpose"], "properties": { "repository": { "type": "string", "minLength": 1 }, "issue": { "type": "string", "format": "uri" }, "purpose": { "type": "string", "minLength": 1 } } }
+    }
+  }
+}
