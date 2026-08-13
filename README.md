@@ -45,6 +45,7 @@ make init
 ```bash
 make status       # show parent and submodule branches/commits
 make evidence-test # run bounded evidence-tool tests
+make policy-test   # validate the internal SLO/error-budget policy and tests
 make evidence-bundle # explicitly collect local evidence (read-only)
 make update       # fetch and fast-forward submodules to their configured main branches
 make validate     # run application tests and render Kubernetes manifests
@@ -127,9 +128,17 @@ or collector: only a human can interpret evidence, declare/close an incident,
 approve an action, or communicate externally. Production changes—including emergency
 rollback or traffic changes—remain reviewed, human-approved, tested where
 possible, and GitOps-only through the appropriate repository and Flux path.
-The public objective is 99% availability over 30 days per service with no SLA;
-the separate controlled-drill objective is P95 recovery under six minutes. A
-short disposable baseline or evidence snapshot cannot prove either objective.
+The internal SLO and error-budget decision policy is
+[`docs/slo-error-budget-policy.md`](docs/slo-error-budget-policy.md), with the
+machine-readable contract in [`docs/slo-policy.json`](docs/slo-policy.json) and
+the target/live-capability checklist in
+[`docs/slo-review-checklist.md`](docs/slo-review-checklist.md). The public
+objective is 99% availability over 30 days per service with no SLA; the
+separate controlled-drill objective is P95 recovery under six minutes. A short
+disposable baseline or evidence snapshot cannot prove either objective. The
+policy distinguishes public status, durable SLO evidence, and paging, and keeps
+protected operator surfaces unconfigured until an authenticated measurement
+path exists.
 
 The site's [`status.html`](francesco-belacca-site/status.html) consumes a separate sanitized status artifact generated hourly by [`macel94/belacca-status`](https://github.com/macel94/belacca-status) from a GitHub-hosted runner outside the native cluster. Fresh observations are displayed; stale or malformed remote data falls back to unknown. No page response, build identifier, or empty incident list is treated as uptime evidence.
 
