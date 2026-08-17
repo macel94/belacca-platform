@@ -57,6 +57,30 @@ make manifests    # validate and render Pong/site plus native production Kustomi
 make manifests-native-edge # compatibility check for native production and edge renders
 ```
 
+## How changes become visible
+
+This workspace is an orchestrator over independent repositories. The complete
+ownership and promotion rules are in [`docs/gitops-delivery.md`](docs/gitops-delivery.md).
+Use the repository that owns the changed boundary:
+
+- application source → push the application repository; its GitHub Actions
+  workflow publishes an immutable image and may append a generated deployment
+  commit containing the image digest;
+- Kubernetes, Flux, routing, or policy → push `belacca-gitops` and let Flux
+  reconcile the native cluster;
+- host/k3s/Ansible prerequisites → push `belacca-infrastructure`, then run the
+  reviewed maintenance operation explicitly;
+- external status artifacts → push or dispatch `belacca-status`; this is an
+  evidence publication path, not a Kubernetes deployment;
+- parent workspace → update only the intended submodule gitlink after the child
+  repository has reached its generated deployment commit.
+
+A parent commit alone never publishes an image or deploys an application. For
+production proof, compare the generated Flux source/Kustomization revision with
+the workload's immutable image tag/digest and visible build marker. `Signature:
+none` is expected for the current unsigned Flux child sources because their
+`spec.verify` field is omitted.
+
 ## Native production state
 
 Native production is the only maintained platform plane: the three-server native

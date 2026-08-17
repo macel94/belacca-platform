@@ -1,6 +1,9 @@
 # Fast development loop
 
-This workspace uses GitOps for production delivery, but GitOps is not the
+For the exact repository ownership, generated deployment-commit behavior,
+parent submodule rules, and Flux verification checklist, see
+[`docs/gitops-delivery.md`](gitops-delivery.md). This workspace uses GitOps for
+production delivery, but GitOps is not the
 right mechanism for every source-code edit. The production path is deliberately
 slower and more controlled than the development path.
 
@@ -188,6 +191,16 @@ creation belongs to environment setup or CI, not to the normal source-edit
 loop.
 
 ## Loop 3: production promotion
+
+Production remains GitOps-managed. Application publish workflows can append a
+generated deployment commit after the reviewed source commit; Flux normally
+reports that generated commit while the workload image tag/build marker still
+identifies the source commit. Do not update the parent submodule pointer or
+claim a rollout until that generated commit, immutable digest, Flux revision,
+workload rollout, and live behavior have been verified.
+
+The detailed cross-repository sequence is in
+[`docs/gitops-delivery.md`](gitops-delivery.md).
 
 Production remains GitOps-managed:
 
