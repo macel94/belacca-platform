@@ -17,3 +17,7 @@
 	path = belacca-infrastructure
 	url = https://github.com/macel94/belacca-infrastructure.git
 	branch = main
+[submodule "mutandae"]
+	path = mutandae
+	url = https://github.com/macel94/mutandae.git
+	branch = main

@@ -13,6 +13,7 @@ remain in their own repositories:
 | `belacca-status/` | [`macel94/belacca-status`](https://github.com/macel94/belacca-status) | Hourly external observations and sanitized status history |
 | `belacca-gitops/` | [`macel94/belacca-gitops`](https://github.com/macel94/belacca-gitops) | Flux root, Kubernetes resources, host routing |
 | `belacca-infrastructure/` | [`macel94/belacca-infrastructure`](https://github.com/macel94/belacca-infrastructure) | Host preparation, firewall posture, native k3s, storage prerequisites |
+| `mutandae/` | [`macel94/mutandae`](https://github.com/macel94/mutandae) | Machine identity lifecycle, μTandae Protocol, multi-cloud demo, images |
 
 The application and platform repositories are pinned to known commits as
 submodules. The status repository is maintained separately and is also checked
