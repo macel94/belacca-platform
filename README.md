@@ -93,10 +93,11 @@ Cloudflare DNS-only records for application hosts contain `.73`, `.41`, and
 Native production is not a development sandbox. Use local process mode or an
 explicitly disposable isolated environment for development and experiments.
 All production changes are reviewed GitOps changes through the native
-`belacca-production` tree. Native state now has a reliable immutable AWS S3
-backup destination with Object Lock, encryption, scoped identities, synthetic
-acceptance evidence, and a USD 8 monthly budget guard. This is a reliable
-backup destination—not yet a production RPO guarantee—because scheduled jobs
+`belacca-production` tree. Native state now has a reliable AWS S3 backup destination with short-window
+Object Lock (GOVERNANCE, 30-day default; relaxed on 2026-09-02), encryption,
+scoped identities, synthetic acceptance evidence, and a USD 5 monthly budget
+guard target. This is a reliable backup destination—not yet a production RPO
+guarantee—because scheduled jobs
 remain fail-closed until live source consistency, artifacts, retention, restore,
 and notification evidence are complete.
 
